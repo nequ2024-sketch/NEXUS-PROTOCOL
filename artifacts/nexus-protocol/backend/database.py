@@ -92,5 +92,36 @@ def initialize() -> None:
                 closed_at INTEGER NOT NULL,
                 onchain_tx TEXT
             );
+            CREATE TABLE IF NOT EXISTS trade_quotes (
+                quote_id TEXT PRIMARY KEY,
+                wallet TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL CHECK (side IN ('BUY', 'SELL')),
+                amount TEXT NOT NULL,
+                reference_price TEXT NOT NULL,
+                estimated_base_qty TEXT NOT NULL,
+                estimated_quote_qty TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL,
+                used INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS trade_quotes_wallet_created
+                ON trade_quotes(wallet, created_at);
+            CREATE TABLE IF NOT EXISTS trade_orders (
+                quote_id TEXT PRIMARY KEY,
+                wallet TEXT NOT NULL,
+                client_order_id TEXT NOT NULL UNIQUE,
+                exchange_order_id TEXT,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL CHECK (side IN ('BUY', 'SELL')),
+                amount TEXT NOT NULL,
+                status TEXT NOT NULL,
+                executed_base_qty TEXT,
+                executed_quote_qty TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS trade_orders_wallet_created
+                ON trade_orders(wallet, created_at DESC);
             """
         )

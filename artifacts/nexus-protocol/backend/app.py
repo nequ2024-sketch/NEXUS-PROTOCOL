@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import secrets
 import time
 from typing import Any
 
@@ -24,6 +25,7 @@ from .config import (
 )
 from .notifier import send_telegram
 from .onchain import read_signals
+from . import trading
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("nexus.api")
@@ -247,14 +249,216 @@ def verify_transaction():
 @app.post(f"{API_PREFIX}/trade")
 @require_auth
 def trade():
-    """لا يرسل أوامر حتى يُفعّل مالك المشروع تداول Testnet صراحة."""
+    """الطريق القديم لا ينفذ أمراً؛ استخدم المعاينة ثم التأكيد الأحادي."""
     return jsonify(
         {
-            "error": "Exchange execution is disabled.",
+            "error": "Direct order submission is disabled. Create and explicitly confirm a single-use Testnet quote.",
             "testnetTradingReady": TESTNET_TRADING_READY,
-            "autoTradingReady": AUTO_TRADING_READY,
         }
-    ), 503
+    ), 410
+
+
+@app.post(f"{API_PREFIX}/trade/quote")
+@require_auth
+def trade_quote():
+    """إنشاء معاينة قصيرة العمر لأمر Spot Testnet، من دون إرساله."""
+    body = _json_body()
+    now = int(time.time())
+    wallet = g.wallet.lower()
+
+    with database.connection() as conn:
+        recent_quotes = conn.execute(
+            "SELECT COUNT(*) AS total FROM trade_quotes WHERE wallet = ? AND created_at >= ?",
+            (wallet, now - 60),
+        ).fetchone()["total"]
+    if recent_quotes >= 10:
+        return jsonify({"error": "Quote limit reached. Wait before requesting another preview."}), 429
+
+    try:
+        details = trading.build_order_quote(
+            body.get("symbol"), body.get("side"), body.get("amount")
+        )
+    except trading.TradingError as error:
+        return jsonify({"error": str(error)}), error.status_code
+
+    quote_id = secrets.token_urlsafe(32)
+    expires_at = now + trading.QUOTE_TTL_SECONDS
+    with database.connection() as conn:
+        conn.execute("DELETE FROM trade_quotes WHERE expires_at < ?", (now - 86_400,))
+        conn.execute(
+            """
+            INSERT INTO trade_quotes (
+                quote_id, wallet, symbol, side, amount, reference_price,
+                estimated_base_qty, estimated_quote_qty, created_at, expires_at, used
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+            """,
+            (
+                quote_id,
+                wallet,
+                details["symbol"],
+                details["side"],
+                details["amount"],
+                details["referencePrice"],
+                details["estimatedBaseQty"],
+                details["estimatedQuoteQty"],
+                now,
+                expires_at,
+            ),
+        )
+
+    return jsonify(
+        {
+            "quoteId": quote_id,
+            "symbol": details["symbol"],
+            "side": details["side"],
+            "amount": details["amount"],
+            "amountUnit": details["amountUnit"],
+            "baseAsset": details["baseAsset"],
+            "quoteAsset": details["quoteAsset"],
+            "referencePrice": details["referencePrice"],
+            "estimatedBaseQty": details["estimatedBaseQty"],
+            "estimatedQuoteQty": details["estimatedQuoteQty"],
+            "createdAt": now,
+            "expiresAt": expires_at,
+            "validForSeconds": trading.QUOTE_TTL_SECONDS,
+        }
+    ), 201
+
+
+@app.post(f"{API_PREFIX}/trade/execute")
+@require_auth
+def trade_execute():
+    """استهلاك معاينة لمحفظتها مرة واحدة بعد موافقة صريحة على كل أمر."""
+    body = _json_body()
+    quote_id = body.get("quoteId")
+    if not isinstance(quote_id, str) or not 24 <= len(quote_id) <= 128:
+        return jsonify({"error": "A valid order preview is required."}), 400
+    if body.get("confirmed") is not True:
+        return jsonify({"error": "Explicit confirmation is required for each order."}), 400
+    if not TESTNET_TRADING_READY:
+        return jsonify({"error": "Binance Spot Testnet is not configured."}), 503
+
+    now = int(time.time())
+    wallet = g.wallet.lower()
+    client_order_id = f"NEXUS{secrets.token_hex(12)}"
+    with database.connection() as conn:
+        quote = conn.execute(
+            """
+            SELECT * FROM trade_quotes
+            WHERE quote_id = ? AND wallet = ?
+            """,
+            (quote_id, wallet),
+        ).fetchone()
+        if quote is None:
+            return jsonify({"error": "Order preview was not found for this wallet."}), 404
+        if quote["expires_at"] < now:
+            return jsonify({"error": "Order preview expired. Request a new preview."}), 410
+        if quote["used"]:
+            return jsonify({"error": "This order preview has already been used."}), 409
+
+        today_start = now - 86_400
+        wallet_orders = conn.execute(
+            "SELECT COUNT(*) AS total FROM trade_orders WHERE wallet = ? AND created_at >= ?",
+            (wallet, today_start),
+        ).fetchone()["total"]
+        all_orders = conn.execute(
+            "SELECT COUNT(*) AS total FROM trade_orders WHERE created_at >= ?",
+            (today_start,),
+        ).fetchone()["total"]
+        if wallet_orders >= 20 or all_orders >= 100:
+            return jsonify({"error": "Shared Testnet order limit reached."}), 429
+
+        consumed = conn.execute(
+            "UPDATE trade_quotes SET used = 1 WHERE quote_id = ? AND wallet = ? AND used = 0",
+            (quote_id, wallet),
+        )
+        if consumed.rowcount != 1:
+            return jsonify({"error": "This order preview has already been used."}), 409
+        conn.execute(
+            """
+            INSERT INTO trade_orders (
+                quote_id, wallet, client_order_id, symbol, side, amount,
+                status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, 'SUBMITTING', ?, ?)
+            """,
+            (
+                quote_id,
+                wallet,
+                client_order_id,
+                quote["symbol"],
+                quote["side"],
+                quote["amount"],
+                now,
+                now,
+            ),
+        )
+        order = dict(quote)
+
+    try:
+        result = trading.submit_confirmed_market_order(order, client_order_id)
+    except trading.TradingError as error:
+        final_status = "UNKNOWN" if error.status_code == 502 else "REJECTED"
+        with database.connection() as conn:
+            conn.execute(
+                "UPDATE trade_orders SET status = ?, updated_at = ? WHERE quote_id = ?",
+                (final_status, int(time.time()), quote_id),
+            )
+        if final_status == "UNKNOWN":
+            logger.warning("Testnet order response uncertain; manual account check required.")
+        return jsonify(
+            {
+                "error": str(error),
+                "status": final_status,
+                "quoteId": quote_id,
+                "clientOrderId": client_order_id,
+            }
+        ), error.status_code
+
+    with database.connection() as conn:
+        conn.execute(
+            """
+            UPDATE trade_orders
+            SET exchange_order_id = ?, status = ?, executed_base_qty = ?,
+                executed_quote_qty = ?, updated_at = ?
+            WHERE quote_id = ?
+            """,
+            (
+                result["exchangeOrderId"],
+                result["status"],
+                result["executedBaseQty"],
+                result["executedQuoteQty"],
+                int(time.time()),
+                quote_id,
+            ),
+        )
+    return jsonify(
+        {
+            "quoteId": quote_id,
+            "symbol": order["symbol"],
+            "side": order["side"],
+            **result,
+            "testnet": True,
+        }
+    ), 200
+
+
+@app.get(f"{API_PREFIX}/trade/orders")
+@require_auth
+def trade_orders():
+    """سجل أوامر Testnet التي أكدها عنوان المحفظة الحالي فقط."""
+    with database.connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT quote_id, symbol, side, amount, status, exchange_order_id,
+                   executed_base_qty, executed_quote_qty, created_at, updated_at
+            FROM trade_orders
+            WHERE wallet = ?
+            ORDER BY created_at DESC
+            LIMIT 20
+            """,
+            (g.wallet.lower(),),
+        ).fetchall()
+    return jsonify({"available": True, "items": [dict(row) for row in rows]})
 
 
 if __name__ == "__main__":

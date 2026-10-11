@@ -729,20 +729,49 @@ h1 { margin:10px 0 0; color:#edf6f2; font-size:clamp(31px,4vw,48px); line-height
 .terminal-disabled-message strong {font-size:10px;font-weight:500;color:#c8bc8b}
 .terminal-disabled-message p {font-size:9px;line-height:1.5;color:#8e876a;margin:8px 0 0}
 .terminal-trade-form {border:0;padding:0 12px;margin:0;min-width:0}
+.terminal-trade-form .terminal-side-switch {padding:2px 0 0}
+.terminal-side-switch button {cursor:pointer}
+.terminal-side-switch button.selected {color:#e1f8fa;border-color:rgba(0,229,255,.42);background:rgba(0,229,255,.08)}
+.terminal-side-switch button.sell-selected {color:#ff8297;border-color:rgba(255,79,116,.38);background:rgba(255,79,116,.07)}
 .terminal-trade-form label {display:block;margin:12px 0 5px;color:#66736d;font:8px 'DM Mono',monospace;letter-spacing:.1em}
-.terminal-trade-form input,.terminal-trade-form select {width:100%;height:34px;background:#0a0e12;border:1px solid rgba(142,160,151,.14);border-radius:3px;color:#75817b;padding:0 9px;font:9px 'DM Mono',monospace}
+.terminal-trade-form input {width:100%;height:34px;background:#0a0e12;border:1px solid rgba(142,160,151,.14);border-radius:3px;color:#d4dfdc;padding:0 9px;font:10px 'DM Mono',monospace}
 .terminal-trade-form input::placeholder {color:#48534d}
-.terminal-percent-row {display:flex;gap:5px;margin-top:6px}
-.terminal-percent-row button {flex:1;padding:6px 1px;background:rgba(130,145,137,.04);border:1px solid rgba(142,160,151,.1);border-radius:3px;color:#58645e;font:7px 'DM Mono',monospace}
-.terminal-execute {width:100%;height:38px;margin-top:15px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.15);color:#547567;border-radius:3px;font:9px 'DM Mono',monospace;letter-spacing:.1em}
+.terminal-execute {width:calc(100% - 24px);min-height:38px;margin:13px 12px 0;padding:8px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);color:#8be8ee;border-radius:3px;font:9px 'DM Mono',monospace;letter-spacing:.08em;cursor:pointer}
+.terminal-trade-form .terminal-execute {width:100%;margin:13px 0 0}
+.terminal-execute:disabled,.terminal-confirm-order:disabled {cursor:not-allowed;opacity:.45}
 .terminal-autotrade {display:flex;justify-content:space-between;align-items:center;margin:14px 12px 0;padding:11px 10px;border:1px solid rgba(255,61,232,.2);background:rgba(255,61,232,.035);border-radius:4px}
 .terminal-autotrade strong {display:block;color:#a98ab6;font:8px 'DM Mono',monospace;letter-spacing:.1em}
 .terminal-autotrade span {display:block;color:#65566d;font:7px 'DM Mono',monospace;margin-top:5px}
+.terminal-tag.live-tag {color:#7de5c0;border-color:rgba(70,222,171,.3);background:rgba(70,222,171,.06)}
 .terminal-toggle {position:relative;width:30px;height:16px}
 .terminal-toggle input {position:absolute;opacity:0}
 .terminal-toggle span {position:absolute;inset:0;border-radius:20px;background:#272b2c}
 .terminal-toggle span:after {content:'';position:absolute;width:10px;height:10px;left:3px;top:3px;background:#646b68;border-radius:50%}
 .terminal-control-note {margin:10px 13px 0;color:#58635d;font:7px 'DM Mono',monospace;line-height:1.5}
+.terminal-trade-feedback {display:flex;align-items:flex-start;gap:7px;margin:10px 12px 0;padding:9px;border:1px solid rgba(0,229,255,.18);border-radius:4px;background:rgba(0,229,255,.035);color:#91a9a7;font:8px 'DM Mono',monospace;line-height:1.5;overflow-wrap:anywhere}
+.terminal-trade-feedback svg {width:13px;height:13px;flex:0 0 auto;color:#00dff2}
+.terminal-trade-feedback.error {border-color:rgba(255,79,116,.24);background:rgba(255,79,116,.045);color:#c6949c}
+.terminal-trade-feedback.error svg {color:#ff6682}
+.terminal-trade-feedback.success {border-color:rgba(70,222,171,.24);background:rgba(70,222,171,.045);color:#9ad8c4}
+.terminal-trade-feedback.success svg {color:#56dfa9}
+.terminal-quote-review {margin:12px;padding:11px;border:1px solid rgba(0,229,255,.27);background:linear-gradient(140deg,rgba(0,229,255,.055),rgba(255,61,232,.035));border-radius:4px}
+.quote-review-head {display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;color:#d9f5f4;font:8px 'DM Mono',monospace;letter-spacing:.08em}
+.quote-review-head span {display:flex;align-items:center;gap:4px;color:#ffd17b}
+.quote-review-head svg {width:11px;height:11px}
+.quote-review-row {display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid rgba(146,176,169,.1);font:7px 'DM Mono',monospace}
+.quote-review-row span {color:#71827d}
+.quote-review-row b {color:#d3e4df;text-align:right;font-weight:500}
+.quote-review-row b.positive {color:#5ad6a2}.quote-review-row b.negative {color:#ff7087}
+.terminal-quote-review p {margin:8px 0;color:#a59982;font:7px 'DM Mono',monospace;line-height:1.5}
+.terminal-confirm-order {width:100%;min-height:37px;padding:7px;border:1px solid rgba(0,229,255,.46);border-radius:3px;background:linear-gradient(90deg,rgba(0,229,255,.13),rgba(255,61,232,.1));color:#bdf8f4;font:8px 'DM Mono',monospace;letter-spacing:.05em;cursor:pointer}
+.terminal-confirm-order svg {width:12px;height:12px;vertical-align:middle;animation:spin 1s linear infinite}
+.terminal-order-history {margin:12px 12px 0;padding-top:10px;border-top:1px solid rgba(148,168,162,.1)}
+.terminal-order-history .terminal-panel-label {display:flex;justify-content:space-between;align-items:center;color:#788883;font:7px 'DM Mono',monospace;letter-spacing:.05em}
+.terminal-order-history .terminal-panel-label button {display:grid;place-items:center;width:24px;height:22px;background:none;border:0;color:#00dff2;cursor:pointer}
+.terminal-order-history .terminal-panel-label svg {width:12px;height:12px}
+.terminal-order-empty {padding:9px 0;color:#61716c;font:8px 'DM Mono',monospace}
+.terminal-order-row {display:flex;justify-content:space-between;gap:6px;padding:7px 0;border-bottom:1px solid rgba(148,168,162,.08);font:8px 'DM Mono',monospace}
+.terminal-order-row b {color:#87968f;font-weight:500}
 .bottom-dock {margin-top:9px;min-height:148px}
 .bottom-dock-head {display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(147,169,161,.11);padding:0 10px}
 .terminal-bottom-tabs {display:flex;gap:3px}
@@ -774,10 +803,7 @@ h1 { margin:10px 0 0; color:#edf6f2; font-size:clamp(31px,4vw,48px); line-height
 @media(max-width:1100px) {
  .terminal-head {gap:12px;flex-wrap:wrap}.terminal-head-metrics{gap:12px}.terminal-brand{min-width:155px}
  .terminal-workspace{grid-template-columns:minmax(200px,.7fr) minmax(340px,1.5fr)}
- .trade-disabled-panel{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:start}
- .trade-disabled-panel .terminal-panel-head,.trade-disabled-panel .terminal-disabled-message{grid-column:1/-1}
- .trade-disabled-panel .terminal-panel-head{grid-row:1}.trade-disabled-panel .terminal-side-switch{grid-column:1;grid-row:2}.trade-disabled-panel .terminal-disabled-message{grid-row:3}
- .terminal-trade-form{grid-column:1;grid-row:4/ span 2}.terminal-autotrade{grid-column:2;grid-row:2;margin-top:11px}.terminal-control-note{grid-column:2;grid-row:3}
+  .trade-disabled-panel{grid-column:1/-1;display:block}
 }
 @media(max-width:720px) {
  .terminal-page{padding-top:12px}
@@ -790,8 +816,7 @@ h1 { margin:10px 0 0; color:#edf6f2; font-size:clamp(31px,4vw,48px); line-height
  .terminal-timeframes button{padding:7px 6px;font-size:8px}.terminal-chart-loading-state{font-size:7px}
  .terminal-workspace{grid-template-columns:1fr}
  .orderbook-panel{order:2}.terminal-center-column{order:1;grid-template-rows:minmax(315px,auto) auto}
- .trade-disabled-panel{order:3;grid-template-columns:1fr}
- .trade-disabled-panel .terminal-panel-head,.trade-disabled-panel .terminal-disabled-message,.trade-disabled-panel .terminal-side-switch,.terminal-trade-form,.terminal-autotrade,.terminal-control-note{grid-column:1;grid-row:auto}
+  .trade-disabled-panel{order:3;display:block}
  .terminal-autotrade{margin-top:12px}.terminal-chart-wrap{height:330px;min-height:290px}
  .book-levels{min-height:140px}.book-row{height:18px;font-size:9px}.book-columns{font-size:8px}
  .terminal-disclosure{align-items:flex-start;flex-wrap:wrap}.terminal-disclosure > span:first-of-type{flex:1 1 calc(100% - 30px)}

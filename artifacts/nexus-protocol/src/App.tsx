@@ -173,7 +173,7 @@ function Router() {
     <Route path="/presale" component={() => <PresalePage wallet={wallet} />} />
     <Route path="/subscriptions" component={Subscriptions} />
     <Route path="/signals" component={Signals} />
-    <Route path="/terminal" component={() => <Suspense fallback={<div className="empty-state" role="status">Loading public market terminal…</div>}><TerminalPage /></Suspense>} />
+    <Route path="/terminal" component={() => <Suspense fallback={<div className="empty-state" role="status">Loading public market terminal…</div>}><TerminalPage wallet={wallet} /></Suspense>} />
     <Route component={NotFound} />
   </Switch></RoutedErrorBoundary></Shell>;
 }

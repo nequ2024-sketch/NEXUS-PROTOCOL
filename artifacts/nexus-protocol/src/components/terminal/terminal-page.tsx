@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'wouter';
-import { Activity, ArrowDownRight, ArrowUpRight, CircleAlert, ExternalLink, LockKeyhole, RefreshCw, Search, Wifi, WifiOff } from 'lucide-react';
+import { Activity, ArrowDownRight, ArrowUpRight, CircleAlert, ExternalLink, RefreshCw, Search, Wifi, WifiOff } from 'lucide-react';
 import { ChartPanel } from '@/components/terminal/chart-panel';
+import { TradePanel } from '@/components/terminal/trade-panel';
 import { DEFAULT_TERMINAL_SYMBOL, TERMINAL_TIMEFRAMES, useBinanceMarket, useBinanceMarkets, type BookLevel, type SpotMarket, type TerminalSymbol, type TerminalTimeframe } from '@/hooks/use-binance-market';
 import { TESTNET_CHAIN_ID } from '@/lib/contracts';
 
@@ -125,26 +126,6 @@ function SignalFeed() {
   </section>;
 }
 
-function DisabledTradePanel() {
-  return <aside className="terminal-panel trade-disabled-panel">
-    <div className="terminal-panel-head"><div><div className="terminal-panel-label">ORDER ENTRY</div><div className="terminal-symbol-caption">TESTNET SETUP REQUIRED</div></div><span className="terminal-tag dim-tag">MANUAL APPROVAL</span></div>
-    <div className="terminal-side-switch"><button disabled>BUY</button><button disabled>SELL</button></div>
-    <div className="terminal-disabled-message"><LockKeyhole /><strong>Testnet execution is not connected</strong><p>Every order will require your approval. Exchange orders remain disabled until a secure Testnet account connection and server-side credentials are configured. This is not a user-linked Binance account.</p></div>
-    <fieldset disabled className="terminal-trade-form">
-      <label htmlFor="terminal-amount">AMOUNT · USDT</label><input id="terminal-amount" type="number" placeholder="Unavailable" />
-      <div className="terminal-percent-row">{['25%', '50%', '75%', '100%'].map((pct) => <button type="button" key={pct} disabled>{pct}</button>)}</div>
-      <label htmlFor="terminal-order-type">ORDER TYPE</label><select id="terminal-order-type" defaultValue="market"><option value="market">Market</option><option value="limit">Limit</option></select>
-      <label htmlFor="terminal-limit-price">LIMIT PRICE</label><input id="terminal-limit-price" type="number" placeholder="—" />
-      <button className="terminal-execute" disabled>EXECUTE ORDER</button>
-    </fieldset>
-    <div className="terminal-autotrade">
-      <div><strong>AUTO-TRADE</strong><span>Execution service unavailable</span></div>
-      <label className="terminal-toggle"><input type="checkbox" disabled aria-label="Auto-trade disabled" /><span /></label>
-    </div>
-    <div className="terminal-control-note">No keys are stored in the browser or database. NEXUS is not listed on Binance Testnet and cannot be used as a quote currency there.</div>
-  </aside>;
-}
-
 function NoRecords({ title, detail }: { title: string; detail: string }) {
   return <div className="terminal-no-records"><div className="terminal-empty-mark"><CircleAlert /></div><strong>{title}</strong><p>{detail}</p></div>;
 }
@@ -175,7 +156,15 @@ function ConnectionFooter({ streamStatus, updatedAt, reconnect }: { streamStatus
   </footer>;
 }
 
-export function TerminalPage() {
+type TerminalWallet = {
+  address: string | null;
+  chainId: number | null;
+  connected: boolean;
+  connecting: boolean;
+  connect: () => Promise<void>;
+};
+
+export function TerminalPage({ wallet }: { wallet: TerminalWallet }) {
   const [symbol, setSymbol] = useState<TerminalSymbol>(DEFAULT_TERMINAL_SYMBOL);
   const [timeframe, setTimeframe] = useState<TerminalTimeframe>('1h');
   const [activeTab, setActiveTab] = useState<BottomTab>('positions');
@@ -185,9 +174,9 @@ export function TerminalPage() {
   const changeUp = market.priceChange !== null && market.priceChange >= 0;
   return <div className="terminal-page">
     <header className="terminal-head">
-      <div className="terminal-brand"><span className="terminal-mark">N</span><div><strong>NEXUS TERMINAL</strong><small>MARKET INTELLIGENCE / READ ONLY</small></div></div>
+      <div className="terminal-brand"><span className="terminal-mark">N</span><div><strong>NEXUS TERMINAL</strong><small>PUBLIC DATA / TESTNET ORDERS</small></div></div>
       <div className="terminal-symbol-wrap"><label htmlFor="market-symbol">MARKET</label><select id="market-symbol" value={symbol} onChange={(event) => setSymbol(event.target.value)} data-testid="select-market-symbol">{[...new Set([symbol, ...allMarkets.markets.map((item) => item.symbol)])].map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
-      <div className="terminal-head-metrics"><div><span>USDT BALANCE</span><b>UNAVAILABLE</b></div><div><span>NEXUS BALANCE</span><b>UNAVAILABLE</b></div><div><span>SUBSCRIPTION</span><b className="terminal-tag dim-tag">UNAVAILABLE</b></div></div>
+      <div className="terminal-head-metrics"><div><span>SHARED TESTNET BALANCE</span><b>NOT SHOWN</b></div><div><span>NEXUS BALANCE</span><b>NOT DEPLOYED</b></div><div><span>SUBSCRIPTION</span><b className="terminal-tag dim-tag">UNAVAILABLE</b></div></div>
       <Link href="/" className="terminal-dashboard-link" data-testid="link-terminal-dashboard">DASHBOARD <ArrowUpRight /></Link>
       <span className={`terminal-quote-status ${market.streamStatus}`}><i />{marketStatus}</span>
     </header>
@@ -195,7 +184,7 @@ export function TerminalPage() {
       <div className="terminal-instrument"><span className="terminal-coin-mark">{symbol.split('/')[0].slice(0, 1)}</span><div><strong>{symbol}</strong><small>BINANCE SPOT MARKET</small></div></div>
       <div className="terminal-quote"><span>LAST</span><b>{market.lastPrice === null ? '—' : `$${formatPrice(market.lastPrice, symbol)}`}</b></div>
       <div className={`terminal-change ${changeUp ? 'positive' : 'negative'}`}><span>24H CHANGE</span><b>{market.priceChange === null ? '—' : `${changeUp ? '+' : ''}${market.priceChange.toFixed(2)}%`}</b></div>
-      <div className="terminal-instrument-right"><span className="terminal-live-indicator"><i /> {market.streamStatus === 'live' ? 'STREAMING' : market.streamStatus.toUpperCase()}</span><span>PUBLIC MARKET DATA · NO ORDERS</span></div>
+      <div className="terminal-instrument-right"><span className="terminal-live-indicator"><i /> {market.streamStatus === 'live' ? 'STREAMING' : market.streamStatus.toUpperCase()}</span><span>PUBLIC MARKET DATA · TESTNET ORDERS ONLY</span></div>
     </div>
     <div className="terminal-timeframe-row">
       <div className="terminal-timeframes" role="group" aria-label="Chart timeframe">{TERMINAL_TIMEFRAMES.map((item) => <button key={item} className={timeframe === item ? 'active' : ''} onClick={() => setTimeframe(item)} aria-pressed={timeframe === item} data-testid={`button-timeframe-${item}`}>{item.toUpperCase()}</button>)}</div>
@@ -208,7 +197,7 @@ export function TerminalPage() {
         <ChartPanel candles={market.candles} symbol={symbol} timeframe={timeframe} loading={market.candleLoading} error={market.candleError} onRetry={market.retryCandles} />
         <SignalFeed />
       </div>
-      <DisabledTradePanel />
+      <TradePanel symbol={symbol} wallet={wallet} />
     </div>
     <BottomDock active={activeTab} onChange={setActiveTab} />
     <ConnectionFooter streamStatus={market.streamStatus} updatedAt={market.updatedAt} reconnect={market.reconnect} />

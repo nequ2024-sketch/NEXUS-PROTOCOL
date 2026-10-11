@@ -21,7 +21,6 @@ CORS_ORIGINS = [
     if origin.strip()
 ]
 ENABLE_TESTNET_TRADING = os.getenv("ENABLE_TESTNET_TRADING", "").lower() == "true"
-ENABLE_AUTO_TRADE = os.getenv("ENABLE_AUTO_TRADE", "").lower() == "true"
 BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "").lower() == "true"
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY")
 BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET")
@@ -31,7 +30,9 @@ TESTNET_TRADING_READY = (
     and bool(BINANCE_API_KEY)
     and bool(BINANCE_API_SECRET)
 )
-AUTO_TRADING_READY = ENABLE_AUTO_TRADE and TESTNET_TRADING_READY
+# Orders are always manual: each submission requires an authenticated,
+# single-use quote and an explicit confirmation from the connected wallet.
+AUTO_TRADING_READY = False
 
 
 def required(name: str, value: str | None) -> str:
