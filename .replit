@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "python-base-3.13"]
 
 [deployment]
 router = "application"
@@ -18,3 +18,17 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+packages = ["glibcLocales"]
+
+[userenv]
+
+[userenv.shared]
+DEPLOY_TEST_MOCK_PAYMENT_TOKEN = "true"
+NEXUS_PER_USDT = "1000"
+PRESALE_DURATION_DAYS = "30"
+PRESALE_HARD_CAP_NEXUS = "300000000"
+PRESALE_MIN_PURCHASE_USDT = "10"
+PRESALE_START_TIMESTAMP = "now"

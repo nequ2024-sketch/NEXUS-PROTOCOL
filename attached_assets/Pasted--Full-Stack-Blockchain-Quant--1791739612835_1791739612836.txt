@@ -1,0 +1,127 @@
+# 🎯 المهمة الأساسية
+
+أنت مهندس Full-Stack + Blockchain + Quant خبير. مهمتك بناء منصة
+تداول كاملة من الصفر اسمها "NEXUS PROTOCOL" — منصة تداول ذكية
+تجمع بين:
+
+1. توكن BEP20 حقيقي على BSC
+2. عقد بيع مسبق (Presale)
+3. عقد اشتراكات دورية (SubscriptionManager)
+4. عقد تسجيل إشارات on-chain (SignalRegistry)
+5. بوت تداول ذكي ينفذ صفقات على Binance
+6. **شاشة تداول احترافية (Trading Terminal) كاملة**
+7. لوحة أداء وإحصائيات
+8. واجهة DApp تقرأ من العقود
+
+الشبكة: BSC Testnet أولاً (97)، ثم Mainnet (56)
+العقود: Solidity ^0.8.20 + OpenZeppelin v5
+الخلفية: Python 3.11+ (Flask + web3.py + ccxt + WebSocket)
+الواجهة: HTML/CSS/JS + ethers.js v6 + TradingView Lightweight Charts
+
+---
+
+# 📋 قواعد العمل الإلزامية
+
+1. Testnet أولاً دائماً
+2. لا مفاتيح سرية في الكود — كل شيء من .env
+3. اختبارات لكل عقد قبل النشر
+4. TimeSeriesSplit في AI — لا shuffle
+5. USDT على BSC = 18 decimals
+6. BSC = PoA → ExtraDataToPOAMiddleware
+7. BSC = gasPrice لا maxFeePerGas
+8. **الشاشة يجب أن تكون responsive + real-time عبر WebSocket**
+9. **كل إشارة تظهر في الواجهة يجب أن تحمل رابط BscScan**
+10. وثّق كل قرار تقني في README.md
+
+---
+
+# 🗂️ هيكل المشروع
+
+nexus-protocol/
+├── contracts/
+│   ├── NexusToken.sol
+│   ├── Presale.sol
+│   ├── SignalRegistry.sol
+│   └── SubscriptionManager.sol
+├── scripts/
+│   ├── deploy.js
+│   └── verify.js
+├── test/
+│   └── *.test.js
+├── backend/
+│   ├── app.py
+│   ├── auth.py
+│   ├── config.py
+│   ├── database.py
+│   ├── websocket_server.py        # ⭐ جديد — بث مباشر
+│   └── signals_api.py             # ⭐ جديد — API الإشارات
+├── bot/
+│   ├── main.py
+│   ├── trading_bot.py
+│   ├── trader.py
+│   ├── signal_publisher.py
+│   ├── subscription_keeper.py
+│   ├── position_manager.py        # ⭐ جديد — إدارة الصفقات
+│   ├── performance_tracker.py     # ⭐ جديد — حساب الأداء
+│   ├── indicators.py
+│   ├── liquidity.py
+│   ├── strategy.py
+│   └── risk_manager.py
+├── ai/
+│   ├── trainer.py
+│   ├── predictor.py
+│   └── model.py
+├── notify/
+│   └── notifier.py
+├── frontend/
+│   ├── index.html                 # Landing page
+│   ├── dashboard.html             # لوحة المستخدم
+│   ├── terminal.html              # ⭐ شاشة التداول الكاملة
+│   ├── signals.html               # ⭐ سجل الإشارات
+│   ├── style.css
+│   ├── app.js
+│   ├── config.js
+│   ├── web3.js
+│   ├── terminal.js                # ⭐ منطق شاشة التداول
+│   └── charts.js                  # ⭐ TradingView integration
+├── hardhat.config.js
+├── package.json
+├── requirements.txt
+├── .env.example
+├── .gitignore
+├── run.sh
+└── README.md
+
+---
+
+# 📝 المواصفات التفصيلية
+
+## 🔗 العقود الذكية (كما في البرومبت السابق)
+
+### NexusToken.sol
+- ERC20 + Burnable + Ownable
+- "Nexus Protocol" / "NEXUS" / 1B supply
+- رسوم قابلة للتعديل (burn + treasury)
+
+### Presale.sol
+- Ownable + ReentrancyGuard
+- يستقبل USDT على BSC
+- buy/withdraw/withdrawUnsold
+
+### SignalRegistry.sol
+- Ownable
+- publishSignal / recordExecution
+- يحفظ: symbol, action, entryPrice, timestamp, pnlBps
+
+### SubscriptionManager.sol
+- خطط اشتراك (Monthly $49 / Annual $499)
+- subscribe / charge / cancel / isActive
+- pull-payment model
+
+---
+
+## 🖥️ شاشة التداول — terminal.html (⭐ القسم الجديد الكامل)
+
+### المتطلبات الأساسية للشاشة:
+
+**1) التخطيط (Layout) — 3 أعمدة:**

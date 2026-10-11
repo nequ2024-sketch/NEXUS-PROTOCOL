@@ -1,0 +1,385 @@
+
+**2) المكونات التفصيلية:**
+
+### A) Header Bar
+- Logo + اسم المنصة
+- Symbol Selector (BTC/USDT, ETH/USDT, BNB/USDT, SOL/USDT)
+- Wallet Balance (USDT + NEXUS)
+- Subscription Status Badge (يرمز للخطة)
+- زر Dashboard
+
+### B) Order Book (العمود الأيسر)
+- قائمة Bids (أخضر) و Asks (أحمر)
+- كل صف: السعر | الحجم | الإجمالي
+- شريط عمق مرئي (depth bar)
+- Spread في المنتصف
+- آخر سعر (mark price)
+- يتحدث كل 500ms عبر WebSocket
+
+### C) Main Chart (المنتصف)
+- **استخدم TradingView Lightweight Charts** (مجاني، خفيف)
+- Timeframes: 1m / 5m / 15m / 1h / 4h / 1D
+- Candlesticks + Volume
+- Overlays: EMA20, EMA50, Bollinger Bands
+- رسم تلقائي للإشارات (markers على الشارت):
+  - 🟢 BUY markers
+  - 🔴 SELL markers
+  - كل marker يحمل tooltip مع رقم الإشارة + hash
+- زر "Add Indicator" (اختياري للتوسع)
+
+### D) Signal Feed (تحت الشارت)
+- قائمة آخر 20 إشارة
+- كل إشارة تعرض:
+  - Symbol + Action (BUY/SELL)
+  - Entry price + Timestamp
+  - AI confidence %
+  - Liquidity status (STRONG_BUY_WALL / STRONG_SELL_WALL)
+  - **رابط BscScan للـ tx_hash** (يؤكد أنها مسجلة on-chain)
+  - حالة التنفيذ (Pending / Filled / Closed + PnL)
+- تحديث فوري عبر WebSocket
+- فلتر: All / Buy / Sell / Profitable / Unprofitable
+
+### E) Trade Panel (العمود الأيمن)
+- Buy / Sell tabs
+- Amount input (USD or asset)
+- Percentage buttons (25% / 50% / 75% / 100%)
+- Order Type: Market / Limit
+- Limit price (if Limit)
+- TP/SL inputs (اختياري)
+- **زر EXECUTE** (يستدعي Binance API عبر trader.py)
+- **Auto-Trade Toggle** (يُفعّل التنفيذ التلقائي للإشارات)
+  - Status: ON/OFF
+  - Risk per trade %
+  - Max open positions
+- Balance display
+- Estimated fees
+
+### F) Open Positions Table
+- كل صف يمثل صفقة مفتوحة:
+  - Symbol | Side | Entry | Current | Size | PnL ($ + %) | TP | SL
+  - زر Close (يغلق فوراً)
+  - زر Modify (تعديل TP/SL)
+  - Progress bar يوضح قرب السعر من TP/SL
+- يتحدث كل ثانية
+- **PnL color**: أخضر > 0، أحمر < 0
+- إجمالي PnL أسفل الجدول
+
+### G) Trade History Table
+- كل الصفقات المغلقة
+- Symbol | Side | Entry | Exit | PnL | Duration | On-chain link
+- فلترة بالتاريخ والنتيجة
+- تصدير CSV
+
+### H) Performance Panel
+- Win Rate %
+- Total Trades
+- Total PnL ($ و %)
+- Average Win / Average Loss
+- Max Drawdown
+- Sharpe Ratio
+- **رسم منحنى Equity** (خط يوضح نمو رأس المال)
+- فلترة: 7d / 30d / 90d / All-time
+
+### I) Stats Bar (أسفل الشاشة)
+- تاريخ آخر إشارة
+- آخر hash on-chain
+- حالة الاتصال (Binance / BSC / WebSocket)
+- Latency
+
+---
+
+## 🌐 Backend — إضافات جديدة
+
+### backend/websocket_server.py
+- Flask-SocketIO أو `websockets` library
+- بث مباشر لكل:
+  - Order book updates
+  - آخر سعر
+  - إشارات جديدة
+  - تحديثات الصفقات المفتوحة
+  - إشعارات الاشتراكات
+- Events:
+  - `price_update` (كل 500ms)
+  - `orderbook_update`
+  - `new_signal`
+  - `position_update`
+  - `trade_closed`
+
+### backend/signals_api.py
+- `GET /api/signals?limit=50` — آخر الإشارات
+- `GET /api/signals/:id` — تفاصيل إشارة
+- `GET /api/performance?period=30d` — إحصائيات الأداء
+- `GET /api/positions` — الصفقات المفتوحة
+- `GET /api/history?limit=100` — سجل الصفقات
+- `POST /api/trade` — تنفيذ صفقة يدوية
+- `POST /api/auto-trade` — تفعيل/إلغاء التنفيذ التلقائي
+
+### bot/position_manager.py
+- `open_position(symbol, side, size, entry, tp, sl)` — يفتح صفقة
+- `close_position(position_id, exit_price)` — يغلق ويسجل PnL
+- `update_trailing_stop(position_id)` — يحدّث SL تلقائياً
+- `check_tp_sl()` — loop يفحص كل صفقة إذا وصلت TP/SL
+- `get_open_positions()` — يعيد كل الصفقات المفتوحة
+
+### bot/performance_tracker.py
+- `calculate_win_rate()` — نسبة الصفقات الرابحة
+- `calculate_roi(period)` — العائد على الاستثمار
+- `calculate_max_drawdown()` — أقصى انخفاض
+- `calculate_sharpe_ratio()` — نسبة شارب
+- `get_equity_curve(period)` — نقاط منحنى رأس المال
+- `get_stats_summary()` — قاموس بكل الإحصائيات
+
+---
+
+## 🎨 Frontend — terminal.js و charts.js
+
+### terminal.js
+- `initChart()` — يهيئ TradingView Lightweight Charts
+- `loadCandles(symbol, timeframe)` — يجلب OHLCV من Binance
+- `subscribePriceUpdates()` — WebSocket للأسعار
+- `subscribeOrderbook()` — WebSocket للـ orderbook
+- `subscribeSignals()` — WebSocket للإشارات الجديدة
+- `renderSignalMarkers()` — يرسم الإشارات على الشارت
+- `renderOrderBook(data)` — يحدث الـ order book
+- `renderPositions()` — يحدث جدول الصفقات
+- `renderPerformance()` — يحدث لوحة الأداء
+- `executeTrade(side, amount, type, price)` — ينفذ صفقة
+- `toggleAutoTrade(enabled)` — يفعّل/يلغي التنفيذ التلقائي
+- `exportHistory()` — تصدير CSV
+
+### charts.js
+- `createChart(container, options)` — ينشئ chart instance
+- `addCandlestickSeries(data)` — يضيف شموع
+- `addLineSeries(data, color)` — يضيف خط (EMA)
+- `addMarkers(markers)` — يضيف علامات الإشارات
+- `addVolumeHistogram(data)` — يضيف الفوليوم
+- `updatePrice(lastCandle)` — تحديث لحظي
+- `addBollingerBands(data)` — Bollinger Bands
+
+---
+
+## 📄 terminal.html — الكود الأساسي
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS | Trading Terminal</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpeg">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&family=Syncopate:wght@700&display=swap" rel="stylesheet">
+</head>
+<body class="terminal-body">
+
+    <!-- Header -->
+    <header class="terminal-header">
+        <div class="terminal-logo" onclick="window.location.href='index.html'">
+            <img src="logo.jpeg" alt="Nexus">
+            <span>NEXUS TERMINAL</span>
+        </div>
+
+        <div class="symbol-selector">
+            <select id="symbolSelect" onchange="Terminal.changeSymbol()">
+                <option value="BTC/USDT">BTC/USDT</option>
+                <option value="ETH/USDT">ETH/USDT</option>
+                <option value="BNB/USDT">BNB/USDT</option>
+                <option value="SOL/USDT">SOL/USDT</option>
+            </select>
+        </div>
+
+        <div class="terminal-balances">
+            <div class="balance-item">
+                <span class="label">USDT</span>
+                <span class="value" id="balanceUSDT">--</span>
+            </div>
+            <div class="balance-item">
+                <span class="label">NEXUS</span>
+                <span class="value" id="balanceNEXUS">--</span>
+            </div>
+        </div>
+
+        <div class="terminal-actions">
+            <span class="sub-badge" id="subBadge">FREE</span>
+            <button class="btn-nav" onclick="window.location.href='dashboard.html'">DASHBOARD</button>
+            <button class="btn-nav" onclick="window.location.href='signals.html'">SIGNALS</button>
+        </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="terminal-grid">
+
+        <!-- Left: Order Book -->
+        <aside class="orderbook-panel">
+            <h3>ORDER BOOK</h3>
+            <div class="orderbook-header">
+                <span>Price</span><span>Amount</span><span>Total</span>
+            </div>
+            <div id="asksList" class="orderbook-asks"></div>
+            <div class="spread-row">
+                <span id="markPrice">--</span>
+            </div>
+            <div id="bidsList" class="orderbook-bids"></div>
+        </aside>
+
+        <!-- Center: Chart + Signals -->
+        <section class="chart-panel">
+            <div class="chart-toolbar">
+                <button onclick="Terminal.setTimeframe('1m')">1m</button>
+                <button onclick="Terminal.setTimeframe('5m')">5m</button>
+                <button onclick="Terminal.setTimeframe('15m')">15m</button>
+                <button onclick="Terminal.setTimeframe('1h')" class="active">1h</button>
+                <button onclick="Terminal.setTimeframe('4h')">4h</button>
+                <button onclick="Terminal.setTimeframe('1d')">1D</button>
+                <span id="connStatus" class="conn-status">●</span>
+            </div>
+            <div id="mainChart"></div>
+
+            <div class="signal-feed">
+                <div class="feed-header">
+                    <h3>LIVE SIGNAL FEED</h3>
+                    <div class="feed-filters">
+                        <button class="active" onclick="Terminal.filterSignals('all')">All</button>
+                        <button onclick="Terminal.filterSignals('buy')">Buy</button>
+                        <button onclick="Terminal.filterSignals('sell')">Sell</button>
+                    </div>
+                </div>
+                <div id="signalFeed" class="feed-list"></div>
+            </div>
+        </section>
+
+        <!-- Right: Trade Panel -->
+        <aside class="trade-panel">
+            <div class="trade-tabs">
+                <button id="buyTab" class="active" onclick="Terminal.setSide('buy')">BUY</button>
+                <button id="sellTab" onclick="Terminal.setSide('sell')">SELL</button>
+            </div>
+
+            <div class="trade-form">
+                <label>Amount (USDT)</label>
+                <input type="number" id="tradeAmount" placeholder="100">
+
+                <div class="pct-buttons">
+                    <button onclick="Terminal.setPct(25)">25%</button>
+                    <button onclick="Terminal.setPct(50)">50%</button>
+                    <button onclick="Terminal.setPct(75)">75%</button>
+                    <button onclick="Terminal.setPct(100)">100%</button>
+                </div>
+
+                <label>Order Type</label>
+                <select id="orderType">
+                    <option value="market">Market</option>
+                    <option value="limit">Limit</option>
+                </select>
+
+                <label>Limit Price</label>
+                <input type="number" id="limitPrice" placeholder="--" disabled>
+
+                <label>Take Profit (Optional)</label>
+                <input type="number" id="tpPrice" placeholder="--">
+
+                <label>Stop Loss (Optional)</label>
+                <input type="number" id="slPrice" placeholder="--">
+
+                <button class="btn-execute" onclick="Terminal.executeTrade()">
+                    ⚡ EXECUTE ORDER
+                </button>
+            </div>
+
+            <div class="auto-trade-panel">
+                <div class="auto-header">
+                    <span>🤖 AUTO-TRADE</span>
+                    <label class="switch">
+                        <input type="checkbox" id="autoTradeToggle" onchange="Terminal.toggleAutoTrade()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="auto-settings">
+                    <label>Risk per trade %</label>
+                    <input type="number" id="riskPct" value="2" min="0.1" max="10" step="0.1">
+                    <label>Max open positions</label>
+                    <input type="number" id="maxPositions" value="3" min="1" max="10">
+                    <label>Min AI confidence %</label>
+                    <input type="number" id="minConfidence" value="60" min="50" max="95">
+                </div>
+            </div>
+        </aside>
+
+        <!-- Bottom: Positions + History + Performance -->
+        <section class="bottom-panel">
+            <div class="bottom-tabs">
+                <button class="active" onclick="Terminal.showBottomTab('positions')">POSITIONS</button>
+                <button onclick="Terminal.showBottomTab('history')">HISTORY</button>
+                <button onclick="Terminal.showBottomTab('performance')">PERFORMANCE</button>
+            </div>
+
+            <div id="positionsTab" class="bottom-content">
+                <table class="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th><th>Side</th><th>Entry</th>
+                            <th>Current</th><th>Size</th><th>PnL</th>
+                            <th>TP</th><th>SL</th><th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsBody"></tbody>
+                </table>
+                <div class="total-pnl">
+                    Total PnL: <span id="totalPnl">$0.00</span>
+                </div>
+            </div>
+
+            <div id="historyTab" class="bottom-content" style="display:none;">
+                <button onclick="Terminal.exportHistory()">Export CSV</button>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th><th>Symbol</th><th>Side</th>
+                            <th>Entry</th><th>Exit</th><th>PnL</th>
+                            <th>Duration</th><th>On-chain</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </div>
+
+            <div id="performanceTab" class="bottom-content" style="display:none;">
+                <div class="stats-grid">
+                    <div class="stat-card"><span>Win Rate</span><b id="statWinRate">--</b></div>
+                    <div class="stat-card"><span>Total Trades</span><b id="statTotal">--</b></div>
+                    <div class="stat-card"><span>Total PnL</span><b id="statPnl">--</b></div>
+                    <div class="stat-card"><span>Avg Win</span><b id="statAvgWin">--</b></div>
+                    <div class="stat-card"><span>Avg Loss</span><b id="statAvgLoss">--</b></div>
+                    <div class="stat-card"><span>Max DD</span><b id="statMaxDD">--</b></div>
+                    <div class="stat-card"><span>Sharpe</span><b id="statSharpe">--</b></div>
+                    <div class="stat-card"><span>ROI (30d)</span><b id="statRoi">--</b></div>
+                </div>
+                <div id="equityChart"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Stats Bar -->
+    <footer class="stats-bar">
+        <span>Last signal: <b id="lastSignalTime">--</b></span>
+        <span>Last hash: <a id="lastHash" target="_blank">--</a></span>
+        <span>Binance: <b id="binanceStatus">●</b></span>
+        <span>BSC: <b id="bscStatus">●</b></span>
+        <span>WS: <b id="wsStatus">●</b></span>
+        <span>Latency: <b id="latency">--ms</b></span>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="web3.js"></script>
+    <script src="charts.js"></script>
+    <script src="terminal.js"></script>
+    <script>
+        window.addEventListener("load", () => Terminal.boot());
+    </script>
+</body>
+</html>

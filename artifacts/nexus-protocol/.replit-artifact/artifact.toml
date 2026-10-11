@@ -1,0 +1,49 @@
+kind = "web"
+previewPath = "/"
+title = "NEXUS PROTOCOL"
+description = "A non-custodial BSC Testnet dashboard for NEXUS token, presale, on-chain signals, subscriptions, and read-only market data. Mainnet operations and live trading remain disabled until explicitly configured."
+version = "1.0.0"
+id = "artifacts/nexus-protocol"
+router = "path"
+
+[[services]]
+name = "web"
+paths = ["/"]
+localPort = 25622
+
+[services.development]
+run = "pnpm --filter @workspace/nexus-protocol run dev"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/nexus-protocol", "run", "build"]
+serve = "static"
+publicDir = "artifacts/nexus-protocol/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25622"
+BASE_PATH = "/"
+
+[[services]]
+name = "backend"
+paths = ["/nexus-api", "/nexus-api/socket.io"]
+localPort = 5000
+
+[services.development]
+run = "BASE_PATH=/nexus-api python -m backend.app"
+
+[services.production.build]
+args = ["python", "-m", "pip", "install", "-r", "requirements.txt"]
+
+[services.production.run]
+args = ["gunicorn", "--bind", "0.0.0.0:5000", "--worker-class", "gthread", "--threads", "50", "--timeout", "120", "backend.app:app"]
+
+[services.production.run.env]
+PORT = "5000"
+BASE_PATH = "/nexus-api"
+
+[services.production.health.startup]
+path = "/nexus-api/api/health"

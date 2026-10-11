@@ -1,0 +1,310 @@
+/* NEXUS Trading Terminal — منطق الشاشة الكامل */
+class Terminal {
+    static state = {
+        symbol: "BTC/USDT",
+        timeframe: "1h",
+        side: "buy",
+        chart: null,
+        candles: null,
+        ws: null,
+        positions: [],
+        signals: [],
+        autoTrade: false,
+        stats: {}
+    };
+
+    static async boot() {
+        await NexusEngine.boot();  // الرسومات والخلفية
+
+        this.initChart();
+        this.connectWS();
+        await this.loadCandles();
+        await this.loadBalance();
+        await this.loadPositions();
+        await this.loadSignals();
+        await this.loadPerformance();
+        await this.loadSubscription();
+
+        // تحديث دوري
+        setInterval(() => this.loadPositions(), 2000);
+        setInterval(() => this.loadPerformance(), 10000);
+    }
+
+    static initChart() {
+        const container = document.getElementById("mainChart");
+        this.state.chart = LightweightCharts.createChart(container, {
+            layout: { background: { color: "#04070a" }, textColor: "#888" },
+            grid: {
+                vertLines: { color: "rgba(255,255,255,0.03)" },
+                horzLines: { color: "rgba(255,255,255,0.03)" }
+            },
+            timeScale: { timeVisible: true, borderColor: "#222" },
+            rightPriceScale: { borderColor: "#222" },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+        });
+
+        this.state.candles = this.state.chart.addCandlestickSeries({
+            upColor: "#00ff9d", downColor: "#ff4444",
+            borderUpColor: "#00ff9d", borderDownColor: "#ff4444",
+            wickUpColor: "#00ff9d", wickDownColor: "#ff4444"
+        });
+    }
+
+    static async loadCandles() {
+        const res = await fetch(
+            `https://api.binance.com/api/v3/klines?symbol=${this.state.symbol.replace("/","")}&interval=${this.state.timeframe}&limit=500`
+        );
+        const data = await res.json();
+        const candles = data.map(c => ({
+            time: c[0] / 1000,
+            open: parseFloat(c[1]),
+            high: parseFloat(c[2]),
+            low: parseFloat(c[3]),
+            close: parseFloat(c[4])
+        }));
+        this.state.candles.setData(candles);
+        this.state.chart.timeScale().fitContent();
+    }
+
+    static connectWS() {
+        this.state.ws = new WebSocket("ws://127.0.0.1:8765");
+
+        this.state.ws.onopen = () => {
+            document.getElementById("wsStatus").style.color = "#00ff9d";
+        };
+        this.state.ws.onclose = () => {
+            document.getElementById("wsStatus").style.color = "#ff4444";
+            setTimeout(() => this.connectWS(), 3000);
+        };
+        this.state.ws.onmessage = (e) => {
+            const msg = JSON.parse(e.data);
+            if (msg.type === "price_update") this.onPriceUpdate(msg.data);
+            if (msg.type === "orderbook_update") this.onOrderbookUpdate(msg.data);
+            if (msg.type === "new_signal") this.onNewSignal(msg.data);
+        };
+    }
+
+    static onPriceUpdate(data) {
+        if (data.symbol !== this.state.symbol) return;
+        document.getElementById("markPrice").innerText = `$${data.price.toLocaleString()}`;
+    }
+
+    static onOrderbookUpdate(data) {
+        if (data.symbol !== this.state.symbol) return;
+        const renderRow = (row, side) => {
+            const [price, amount] = row;
+            const total = (price * amount).toFixed(0);
+            return `<div class="row" onclick="Terminal.setPrice(${price})">
+                <span>${price.toFixed(2)}</span>
+                <span>${amount.toFixed(4)}</span>
+                <span>${total}</span>
+            </div>`;
+        };
+        document.getElementById("asksList").innerHTML =
+            data.asks.slice(0, 10).reverse().map(r => renderRow(r, "ask")).join("");
+        document.getElementById("bidsList").innerHTML =
+            data.bids.slice(0, 10).map(r => renderRow(r, "bid")).join("");
+    }
+
+    static onNewSignal(signal) {
+        this.state.signals.unshift(signal);
+        this.renderSignalFeed();
+        // أضف marker على الشارت
+        this.state.candles.setMarkers(this.buildMarkers());
+    }
+
+    static buildMarkers() {
+        return this.state.signals.slice(0, 50).map(s => ({
+            time: Math.floor(new Date(s.timestamp).getTime() / 1000),
+            position: s.action === "BUY" ? "belowBar" : "aboveBar",
+            color: s.action === "BUY" ? "#00ff9d" : "#ff4444",
+            shape: s.action === "BUY" ? "arrowUp" : "arrowDown",
+            text: `${s.action} @ ${s.entryPrice}`
+        }));
+    }
+
+    static renderSignalFeed() {
+        const feed = document.getElementById("signalFeed");
+        feed.innerHTML = this.state.signals.slice(0, 20).map(s => `
+            <div class="signal-item ${s.action.toLowerCase()}">
+                <div class="row1">
+                    <span class="action ${s.action.toLowerCase()}">${s.action} ${s.symbol}</span>
+                    <span>@ ${s.entryPrice}</span>
+                </div>
+                <div class="row1">
+                    <span>AI: ${s.aiConfidence}% ${s.aiBias}</span>
+                    <span class="hash">TX: <a href="https://bscscan.com/tx/${s.txHash}" target="_blank">${s.txHash?.slice(0,10)}...</a></span>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    static async executeTrade() {
+        const amount = parseFloat(document.getElementById("tradeAmount").value);
+        if (!amount || amount <= 0) return alert("Enter valid amount");
+
+        const type = document.getElementById("orderType").value;
+        const price = type === "limit" ? parseFloat(document.getElementById("limitPrice").value) : null;
+
+        const token = localStorage.getItem("nexus_token");
+        const res = await fetch(`${NEXUS_CONFIG.API_BASE}/trade`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                symbol: this.state.symbol,
+                side: this.state.side,
+                amount, type, price,
+                tp: document.getElementById("tpPrice").value || null,
+                sl: document.getElementById("slPrice").value || null
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("✅ Order executed!");
+            this.loadPositions();
+        } else {
+            alert("❌ " + data.error);
+        }
+    }
+
+    static async toggleAutoTrade() {
+        const enabled = document.getElementById("autoTradeToggle").checked;
+        this.state.autoTrade = enabled;
+        const token = localStorage.getItem("nexus_token");
+        await fetch(`${NEXUS_CONFIG.API_BASE}/auto-trade`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                enabled,
+                riskPct: parseFloat(document.getElementById("riskPct").value),
+                maxPositions: parseInt(document.getElementById("maxPositions").value),
+                minConfidence: parseInt(document.getElementById("minConfidence").value)
+            })
+        });
+    }
+
+    static async loadPositions() {
+        const token = localStorage.getItem("nexus_token");
+        const res = await fetch(`${NEXUS_CONFIG.API_BASE}/positions`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const positions = await res.json();
+        this.state.positions = positions;
+
+        const tbody = document.getElementById("positionsBody");
+        tbody.innerHTML = positions.map(p => {
+            const pnlClass = p.pnl >= 0 ? "pnl-positive" : "pnl-negative";
+            return `<tr>
+                <td>${p.symbol}</td>
+                <td class="${p.side === 'buy' ? 'pnl-positive' : 'pnl-negative'}">${p.side.toUpperCase()}</td>
+                <td>${p.entry}</td>
+                <td>${p.current}</td>
+                <td>$${p.size}</td>
+                <td class="${pnlClass}">$${p.pnl.toFixed(2)} (${p.pnlPct}%)</td>
+                <td>${p.tp || '--'}</td>
+                <td>${p.sl || '--'}</td>
+                <td><button onclick="Terminal.closePosition(${p.id})">Close</button></td>
+            </tr>`;
+        }).join("");
+
+        const total = positions.reduce((s, p) => s + p.pnl, 0);
+        document.getElementById("totalPnl").innerText = `$${total.toFixed(2)}`;
+        document.getElementById("totalPnl").className = total >= 0 ? "pnl-positive" : "pnl-negative";
+    }
+
+    static async closePosition(id) {
+        if (!confirm("Close this position?")) return;
+        const token = localStorage.getItem("nexus_token");
+        await fetch(`${NEXUS_CONFIG.API_BASE}/trade/close`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ positionId: id })
+        });
+        this.loadPositions();
+    }
+
+    static async loadPerformance() {
+        const res = await fetch(`${NEXUS_CONFIG.API_BASE}/performance?period=30d`);
+        const stats = await res.json();
+        document.getElementById("statWinRate").innerText = `${stats.winRate}%`;
+        document.getElementById("statTotal").innerText = stats.totalTrades;
+        document.getElementById("statPnl").innerText = `$${stats.totalPnl}`;
+        document.getElementById("statAvgWin").innerText = `$${stats.avgWin}`;
+        document.getElementById("statAvgLoss").innerText = `$${stats.avgLoss}`;
+        document.getElementById("statMaxDD").innerText = `${stats.maxDrawdown}%`;
+        document.getElementById("statSharpe").innerText = stats.sharpe;
+        document.getElementById("statRoi").innerText = `${stats.roi}%`;
+    }
+
+    static async loadSignals() {
+        const res = await fetch(`${NEXUS_CONFIG.API_BASE}/signals?limit=50`);
+        this.state.signals = await res.json();
+        this.renderSignalFeed();
+        this.state.candles.setMarkers(this.buildMarkers());
+    }
+
+    static async loadSubscription() {
+        const status = await window.nexusWeb3.getSubscriptionStatus();
+        const badge = document.getElementById("subBadge");
+        if (status.isActive) {
+            badge.innerText = status.planId === 0 ? "MONTHLY" : "ANNUAL";
+            badge.style.color = "#00ff9d";
+        } else {
+            badge.innerText = "FREE";
+            badge.style.color = "#666";
+        }
+    }
+
+    static setSymbol() {
+        this.state.symbol = document.getElementById("symbolSelect").value;
+        this.loadCandles();
+    }
+
+    static setTimeframe(tf) {
+        this.state.timeframe = tf;
+        document.querySelectorAll(".chart-toolbar button").forEach(b => b.classList.remove("active"));
+        event.target.classList.add("active");
+        this.loadCandles();
+    }
+
+    static setSide(side) {
+        this.state.side = side;
+        document.getElementById("buyTab").classList.toggle("active", side === "buy");
+        document.getElementById("sellTab").classList.toggle("active", side === "sell");
+    }
+
+    static setPct(pct) {
+        // يحسب من الرصيد المتاح
+        const balance = parseFloat(document.getElementById("balanceUSDT").innerText) || 0;
+        document.getElementById("tradeAmount").value = (balance * pct / 100).toFixed(2);
+    }
+
+    static setPrice(price) {
+        document.getElementById("limitPrice").value = price;
+    }
+
+    static showBottomTab(tab) {
+        ["positions", "history", "performance"].forEach(t => {
+            document.getElementById(`${t}Tab`).style.display = t === tab ? "block" : "none";
+        });
+    }
+
+    static filterSignals(filter) {
+        // فلترة الإشارات
+    }
+
+    static exportHistory() {
+        window.location.href = `${NEXUS_CONFIG.API_BASE}/history/export`;
+    }
+}
+
+window.Terminal = Terminal;

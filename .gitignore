@@ -47,3 +47,15 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Generated or secret files for NEXUS; keep the workspace's artifacts/ source tree tracked.
+.env
+**/.env
+*.db
+ai/*.pkl
+__pycache__/
+**/__pycache__/
+node_modules/
+**/node_modules/
+/artifacts/nexus-protocol/cache/
+/artifacts/nexus-protocol/.hardhat-artifacts/
