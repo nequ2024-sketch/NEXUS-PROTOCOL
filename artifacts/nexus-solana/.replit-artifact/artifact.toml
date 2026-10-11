@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/nexus-solana/"
+title = "NEXUS SOLANA DEVNET"
+description = "A separate NEXUS token launch and bonding-curve interface for Solana Devnet, using Phantom and Solflare. This artifact will leave the existing BSC/Vite application untouched."
+version = "1.0.0"
+id = "artifacts/nexus-solana"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/nexus-solana/" ]
+localPort = 24109
+
+[services.development]
+run = "pnpm --filter @workspace/nexus-solana run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/nexus-solana", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/nexus-solana/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24109"
+BASE_PATH = "/nexus-solana/"
