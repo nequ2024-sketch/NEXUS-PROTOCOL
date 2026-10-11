@@ -31,16 +31,16 @@ export function ChartPanel({ candles, symbol, timeframe, loading, error, onRetry
       height: host.clientHeight,
       layout: { background: { type: ColorType.Solid, color: '#0b0f13' }, textColor: '#7e8985', fontFamily: 'DM Mono, monospace', fontSize: 10 },
       grid: { vertLines: { color: 'rgba(154,177,169,.08)' }, horzLines: { color: 'rgba(154,177,169,.08)' } },
-      crosshair: { vertLine: { color: 'rgba(0,255,157,.36)' }, horzLine: { color: 'rgba(0,255,157,.28)' } },
+      crosshair: { vertLine: { color: 'rgba(0,229,255,.36)' }, horzLine: { color: 'rgba(0,229,255,.28)' } },
       rightPriceScale: { borderColor: 'rgba(154,177,169,.18)', scaleMargins: { top: 0.1, bottom: 0.25 } },
       timeScale: { borderColor: 'rgba(154,177,169,.18)', timeVisible: true, secondsVisible: false, rightOffset: 6 },
       localization: { priceFormatter: (price: number) => price.toLocaleString('en-US', { maximumFractionDigits: price < 1 ? 6 : 2 }) },
     });
     const candle = chart.addSeries(CandlestickSeries, { upColor: '#00ff9d', downColor: '#e05467', borderUpColor: '#00ff9d', borderDownColor: '#e05467', wickUpColor: '#00ff9d', wickDownColor: '#e05467', priceLineVisible: false });
     const ema20 = chart.addSeries(LineSeries, { color: '#ffd700', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-    const ema50 = chart.addSeries(LineSeries, { color: '#b829ff', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
-    const upper = chart.addSeries(LineSeries, { color: 'rgba(184,41,255,.42)', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
-    const lower = chart.addSeries(LineSeries, { color: 'rgba(184,41,255,.42)', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+    const ema50 = chart.addSeries(LineSeries, { color: '#ff3de8', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+    const upper = chart.addSeries(LineSeries, { color: 'rgba(255,61,232,.42)', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
+    const lower = chart.addSeries(LineSeries, { color: 'rgba(255,61,232,.42)', lineWidth: 1, lineStyle: 2, priceLineVisible: false, lastValueVisible: false });
     const volume = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',

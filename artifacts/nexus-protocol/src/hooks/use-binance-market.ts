@@ -1,15 +1,106 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export const TERMINAL_SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT'] as const;
+export const DEFAULT_TERMINAL_SYMBOL = 'BTC/USDT';
 export const TERMINAL_TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h', '1d'] as const;
-export type TerminalSymbol = (typeof TERMINAL_SYMBOLS)[number];
+export type TerminalSymbol = string;
 export type TerminalTimeframe = (typeof TERMINAL_TIMEFRAMES)[number];
 export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number };
 export type BookLevel = { price: number; quantity: number };
 export type ConnectionState = 'connecting' | 'live' | 'reconnecting' | 'offline';
+export type SpotMarket = {
+  symbol: string;
+  apiSymbol: string;
+  baseAsset: string;
+  quoteAsset: string;
+  lastPrice: number;
+  changePercent: number;
+  quoteVolume: number;
+};
 
 const API_BASE = 'https://api.binance.com/api/v3';
 const STREAM_BASE = 'wss://stream.binance.com:9443/stream?streams=';
+
+export function useBinanceMarkets() {
+  const [markets, setMarkets] = useState<SpotMarket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const loadedRef = useRef(false);
+
+  const refresh = useCallback(async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    if (!loadedRef.current) setLoading(true);
+    setError(null);
+    try {
+      const [infoResponse, tickerResponse] = await Promise.all([
+        fetch(`${API_BASE}/exchangeInfo`, { signal: controller.signal, cache: 'force-cache' }),
+        fetch(`${API_BASE}/ticker/24hr`, { signal: controller.signal, cache: 'no-store' }),
+      ]);
+      if (!infoResponse.ok) throw new Error(`Binance market list returned HTTP ${infoResponse.status}.`);
+      if (!tickerResponse.ok) throw new Error(`Binance market prices returned HTTP ${tickerResponse.status}.`);
+      const info = await infoResponse.json() as { symbols?: Array<Record<string, unknown>> };
+      const tickerRows = await tickerResponse.json() as Array<Record<string, unknown>>;
+      if (!Array.isArray(info.symbols) || !Array.isArray(tickerRows)) {
+        throw new Error('Binance returned an unexpected spot-market response.');
+      }
+      const tickerBySymbol = new Map(tickerRows.map((row) => [String(row.symbol ?? ''), row]));
+      const nextMarkets = info.symbols
+        .filter((row) => row.status === 'TRADING' && row.isSpotTradingAllowed === true)
+        .map((row) => {
+          const apiSymbol = String(row.symbol ?? '');
+          const ticker = tickerBySymbol.get(apiSymbol);
+          const lastPrice = Number(ticker?.lastPrice);
+          const changePercent = Number(ticker?.priceChangePercent);
+          const quoteVolume = Number(ticker?.quoteVolume);
+          const baseAsset = String(row.baseAsset ?? '');
+          const quoteAsset = String(row.quoteAsset ?? '');
+          return {
+            symbol: `${baseAsset}/${quoteAsset}`,
+            apiSymbol,
+            baseAsset,
+            quoteAsset,
+            lastPrice,
+            changePercent,
+            quoteVolume,
+          };
+        })
+        .filter((market) =>
+          market.apiSymbol.length > 0 &&
+          market.baseAsset.length > 0 &&
+          market.quoteAsset.length > 0 &&
+          Number.isFinite(market.lastPrice) &&
+          market.lastPrice > 0 &&
+          Number.isFinite(market.changePercent) &&
+          Number.isFinite(market.quoteVolume),
+        )
+        .sort((a, b) => b.quoteVolume - a.quoteVolume);
+      if (controller.signal.aborted) return;
+      if (!nextMarkets.length) throw new Error('Binance did not return any active spot markets.');
+      loadedRef.current = true;
+      setMarkets(nextMarkets);
+      setUpdatedAt(Date.now());
+    } catch (cause: unknown) {
+      if (controller.signal.aborted) return;
+      setError(cause instanceof Error ? cause.message : 'Unable to load Binance spot markets.');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+    const interval = setInterval(() => void refresh(), 30_000);
+    return () => {
+      clearInterval(interval);
+      requestRef.current?.abort();
+    };
+  }, [refresh]);
+
+  return { markets, loading, error, updatedAt, refresh };
+}
 
 function toPair(symbol: TerminalSymbol) {
   return symbol.replace('/', '').toLowerCase();

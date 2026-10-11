@@ -1,16 +1,24 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'wouter';
-import { Activity, ArrowDownRight, ArrowUpRight, CircleAlert, ExternalLink, LockKeyhole, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Activity, ArrowDownRight, ArrowUpRight, CircleAlert, ExternalLink, LockKeyhole, RefreshCw, Search, Wifi, WifiOff } from 'lucide-react';
 import { ChartPanel } from '@/components/terminal/chart-panel';
-import { TERMINAL_SYMBOLS, TERMINAL_TIMEFRAMES, useBinanceMarket, type BookLevel, type TerminalSymbol, type TerminalTimeframe } from '@/hooks/use-binance-market';
+import { DEFAULT_TERMINAL_SYMBOL, TERMINAL_TIMEFRAMES, useBinanceMarket, useBinanceMarkets, type BookLevel, type SpotMarket, type TerminalSymbol, type TerminalTimeframe } from '@/hooks/use-binance-market';
 import { TESTNET_CHAIN_ID } from '@/lib/contracts';
 
 type BottomTab = 'positions' | 'history' | 'performance';
 
-const formatPrice = (price: number, symbol: TerminalSymbol) => new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: symbol.startsWith('BTC') || symbol.startsWith('ETH') ? 2 : 3,
-  maximumFractionDigits: symbol.startsWith('BTC') || symbol.startsWith('ETH') ? 2 : 4,
-}).format(price);
+const formatPrice = (price: number, _symbol: TerminalSymbol) => {
+  const digits = price >= 1000 ? 2 : price >= 1 ? 4 : price >= 0.01 ? 6 : 8;
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: Math.min(digits, 2),
+    maximumFractionDigits: digits,
+  }).format(price);
+};
+
+const formatVolume = (volume: number) => new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+}).format(volume);
 
 function depthRows(levels: BookLevel[], side: 'bid' | 'ask') {
   const maxTotal = levels.reduce((sum, item) => sum + item.quantity, 0);
@@ -50,6 +58,65 @@ function OrderBook({ symbol, price, bids, asks, streamStatus }: { symbol: Termin
   </section>;
 }
 
+function MarketOverview({
+  markets,
+  loading,
+  error,
+  updatedAt,
+  selectedSymbol,
+  onSelect,
+  onRefresh,
+}: {
+  markets: SpotMarket[];
+  loading: boolean;
+  error: string | null;
+  updatedAt: number | null;
+  selectedSymbol: string;
+  onSelect: (symbol: string) => void;
+  onRefresh: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [visibleCount, setVisibleCount] = useState(20);
+  const filtered = useMemo(() => {
+    const query = search.trim().toUpperCase().replace('/', '');
+    return query
+      ? markets.filter((market) => market.apiSymbol.includes(query) || market.baseAsset.includes(query) || market.quoteAsset.includes(query))
+      : markets;
+  }, [markets, search]);
+
+  return <section className="terminal-panel terminal-markets-panel">
+    <div className="terminal-panel-head">
+      <div><div className="terminal-panel-label">ALL BINANCE SPOT MARKETS</div><div className="terminal-symbol-caption">PUBLIC 24H TICKERS · {markets.length.toLocaleString()} PAIRS</div></div>
+      <div className="market-list-status">{loading ? 'LOADING' : updatedAt ? `UPDATED ${new Date(updatedAt).toLocaleTimeString()}` : 'UNAVAILABLE'}<button type="button" onClick={onRefresh} aria-label="Refresh Binance spot market prices"><RefreshCw /></button></div>
+    </div>
+    <div className="market-list-toolbar">
+      <label className="market-search" htmlFor="market-search"><Search aria-hidden="true" /><input id="market-search" value={search} onChange={(event) => { setSearch(event.target.value); setVisibleCount(20); }} placeholder="Search all pairs or assets" /></label>
+      <span>{filtered.length.toLocaleString()} markets</span>
+    </div>
+    {error && <div className="market-list-error" role="status"><CircleAlert />{error}{markets.length > 0 ? ' Showing the last successful snapshot.' : ''}</div>}
+    {loading && markets.length === 0 ? <div className="terminal-no-records">Loading Binance spot market list and prices…</div> :
+      markets.length === 0 ? <div className="terminal-no-records">Binance spot market data is unavailable. No prices are shown as live.</div> :
+        filtered.length === 0 ? <div className="terminal-no-records">No listed pair matches “{search}”.</div> :
+          <div className="market-list-rows" role="list" aria-label="All Binance Spot markets">
+            {filtered.slice(0, visibleCount).map((market) => <button
+              className={`market-row ${selectedSymbol === market.symbol ? 'selected' : ''}`}
+              type="button"
+              role="listitem"
+              key={market.apiSymbol}
+              onClick={() => onSelect(market.symbol)}
+              aria-pressed={selectedSymbol === market.symbol}
+            >
+              <span className="market-pair"><b>{market.baseAsset}</b><small>/{market.quoteAsset}</small></span>
+              <b className="market-last-price">{formatPrice(market.lastPrice, market.symbol)}</b>
+              <span className={`market-change ${market.changePercent >= 0 ? 'positive' : 'negative'}`}>{market.changePercent >= 0 ? '+' : ''}{market.changePercent.toFixed(2)}%</span>
+              <span className="market-volume">{formatVolume(market.quoteVolume)} <small>{market.quoteAsset}</small></span>
+            </button>)}
+          </div>}
+    {filtered.length > visibleCount && <button type="button" className="market-show-more" onClick={() => setVisibleCount((count) => count + 20)}>SHOW 20 MORE · {filtered.length - visibleCount} REMAINING</button>}
+    <div className="market-list-footnote">Public Binance Spot snapshot refreshes every 30 seconds. The selected chart and order book use the live stream. Testnet orders can only use symbols listed by Binance Spot Testnet.</div>
+  </section>;
+}
+
 function SignalFeed() {
   return <section className="terminal-panel signal-panel">
     <div className="terminal-panel-head"><div><div className="terminal-panel-label">ON-CHAIN SIGNALS</div><div className="terminal-symbol-caption">PUBLISHED FEED</div></div><span className="terminal-tag purple-tag">BSC TESTNET</span></div>
@@ -60,9 +127,9 @@ function SignalFeed() {
 
 function DisabledTradePanel() {
   return <aside className="terminal-panel trade-disabled-panel">
-    <div className="terminal-panel-head"><div><div className="terminal-panel-label">ORDER ENTRY</div><div className="terminal-symbol-caption">EXECUTION DISABLED</div></div><span className="terminal-tag dim-tag">READ ONLY</span></div>
+    <div className="terminal-panel-head"><div><div className="terminal-panel-label">ORDER ENTRY</div><div className="terminal-symbol-caption">TESTNET SETUP REQUIRED</div></div><span className="terminal-tag dim-tag">MANUAL APPROVAL</span></div>
     <div className="terminal-side-switch"><button disabled>BUY</button><button disabled>SELL</button></div>
-    <div className="terminal-disabled-message"><LockKeyhole /><strong>Trading is not configured</strong><p>Secure server-side testnet trading is not available. This terminal reads public Binance spot market data only; it does not send exchange orders.</p></div>
+    <div className="terminal-disabled-message"><LockKeyhole /><strong>Testnet execution is not connected</strong><p>Every order will require your approval. Exchange orders remain disabled until a secure Testnet account connection and server-side credentials are configured. This is not a user-linked Binance account.</p></div>
     <fieldset disabled className="terminal-trade-form">
       <label htmlFor="terminal-amount">AMOUNT · USDT</label><input id="terminal-amount" type="number" placeholder="Unavailable" />
       <div className="terminal-percent-row">{['25%', '50%', '75%', '100%'].map((pct) => <button type="button" key={pct} disabled>{pct}</button>)}</div>
@@ -74,7 +141,7 @@ function DisabledTradePanel() {
       <div><strong>AUTO-TRADE</strong><span>Execution service unavailable</span></div>
       <label className="terminal-toggle"><input type="checkbox" disabled aria-label="Auto-trade disabled" /><span /></label>
     </div>
-    <div className="terminal-control-note">No API credentials, local tokens or exchange responses are used by this page.</div>
+    <div className="terminal-control-note">No keys are stored in the browser or database. NEXUS is not listed on Binance Testnet and cannot be used as a quote currency there.</div>
   </aside>;
 }
 
@@ -109,16 +176,17 @@ function ConnectionFooter({ streamStatus, updatedAt, reconnect }: { streamStatus
 }
 
 export function TerminalPage() {
-  const [symbol, setSymbol] = useState<TerminalSymbol>('BTC/USDT');
+  const [symbol, setSymbol] = useState<TerminalSymbol>(DEFAULT_TERMINAL_SYMBOL);
   const [timeframe, setTimeframe] = useState<TerminalTimeframe>('1h');
   const [activeTab, setActiveTab] = useState<BottomTab>('positions');
+  const allMarkets = useBinanceMarkets();
   const market = useBinanceMarket(symbol, timeframe);
   const marketStatus = market.streamStatus === 'live' ? 'LIVE MARKET' : market.streamStatus.toUpperCase();
   const changeUp = market.priceChange !== null && market.priceChange >= 0;
   return <div className="terminal-page">
     <header className="terminal-head">
       <div className="terminal-brand"><span className="terminal-mark">N</span><div><strong>NEXUS TERMINAL</strong><small>MARKET INTELLIGENCE / READ ONLY</small></div></div>
-      <div className="terminal-symbol-wrap"><label htmlFor="market-symbol">MARKET</label><select id="market-symbol" value={symbol} onChange={(event) => setSymbol(event.target.value as TerminalSymbol)} data-testid="select-market-symbol">{TERMINAL_SYMBOLS.map((item) => <option key={item}>{item}</option>)}</select></div>
+      <div className="terminal-symbol-wrap"><label htmlFor="market-symbol">MARKET</label><select id="market-symbol" value={symbol} onChange={(event) => setSymbol(event.target.value)} data-testid="select-market-symbol">{[...new Set([symbol, ...allMarkets.markets.map((item) => item.symbol)])].map((item) => <option key={item} value={item}>{item}</option>)}</select></div>
       <div className="terminal-head-metrics"><div><span>USDT BALANCE</span><b>UNAVAILABLE</b></div><div><span>NEXUS BALANCE</span><b>UNAVAILABLE</b></div><div><span>SUBSCRIPTION</span><b className="terminal-tag dim-tag">UNAVAILABLE</b></div></div>
       <Link href="/" className="terminal-dashboard-link" data-testid="link-terminal-dashboard">DASHBOARD <ArrowUpRight /></Link>
       <span className={`terminal-quote-status ${market.streamStatus}`}><i />{marketStatus}</span>
@@ -133,6 +201,7 @@ export function TerminalPage() {
       <div className="terminal-timeframes" role="group" aria-label="Chart timeframe">{TERMINAL_TIMEFRAMES.map((item) => <button key={item} className={timeframe === item ? 'active' : ''} onClick={() => setTimeframe(item)} aria-pressed={timeframe === item} data-testid={`button-timeframe-${item}`}>{item.toUpperCase()}</button>)}</div>
       <div className="terminal-chart-loading-state">{market.candleLoading ? 'FETCHING PUBLIC KLINES' : market.candleError ? 'KLINE REQUEST FAILED' : `${market.candles.length} PUBLIC CANDLES`}</div>
     </div>
+    <MarketOverview markets={allMarkets.markets} loading={allMarkets.loading} error={allMarkets.error} updatedAt={allMarkets.updatedAt} selectedSymbol={symbol} onSelect={setSymbol} onRefresh={() => void allMarkets.refresh()} />
     <div className="terminal-workspace">
       <OrderBook symbol={symbol} price={market.lastPrice} bids={market.bids} asks={market.asks} streamStatus={market.streamStatus} />
       <div className="terminal-center-column">
