@@ -11,6 +11,19 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
+  --color-cyan-50: var(--nexus-cyan-50);
+  --color-cyan-100: var(--nexus-cyan-100);
+  --color-cyan-200: var(--nexus-cyan-200);
+  --color-cyan-300: var(--nexus-cyan-300);
+  --color-cyan-400: var(--nexus-cyan-400);
+  --color-cyan-500: var(--nexus-cyan-500);
+
+  --color-fuchsia-100: var(--nexus-magenta-100);
+  --color-fuchsia-200: var(--nexus-magenta-200);
+  --color-fuchsia-300: var(--nexus-magenta-300);
+  --color-fuchsia-400: var(--nexus-magenta-400);
+  --color-fuchsia-600: var(--nexus-magenta-600);
+
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
   --color-card-border: hsl(var(--card-border));
@@ -68,6 +81,19 @@
 
 /* NEXUS / dark launch terminal — canonical palette for the preview */
 :root {
+  --nexus-cyan-50: hsl(185 100% 97%);
+  --nexus-cyan-100: hsl(185 100% 91%);
+  --nexus-cyan-200: hsl(185 100% 78%);
+  --nexus-cyan-300: hsl(185 100% 56%);
+  --nexus-cyan-400: hsl(185 100% 44%);
+  --nexus-cyan-500: hsl(187 100% 34%);
+
+  --nexus-magenta-100: hsl(310 100% 95%);
+  --nexus-magenta-200: hsl(310 100% 82%);
+  --nexus-magenta-300: hsl(310 92% 64%);
+  --nexus-magenta-400: hsl(310 88% 53%);
+  --nexus-magenta-600: hsl(310 75% 36%);
+
   --button-outline: rgba(190, 220, 255, 0.14);
   --badge-outline: rgba(190, 220, 255, 0.08);
 
@@ -96,7 +122,7 @@
 
   --sidebar-border: 225 26% 14%;
 
-  --sidebar-primary: 187 100% 53%;
+  --sidebar-primary: 185 100% 56%;
 
   --sidebar-primary-foreground: 230 34% 6%;
 
@@ -104,7 +130,7 @@
 
   --sidebar-accent-foreground: 190 100% 72%;
 
-  --sidebar-ring: 187 100% 53%;
+  --sidebar-ring: 185 100% 56%;
 
   --popover: 229 30% 10%;
 
@@ -112,11 +138,11 @@
 
   --popover-border: 222 24% 19%;
 
-  --primary: 187 100% 53%;
+  --primary: 185 100% 56%;
 
   --primary-foreground: 230 34% 6%;
 
-  --secondary: 262 42% 19%;
+  --secondary: 278 46% 21%;
 
   --secondary-foreground: 270 100% 87%;
 
@@ -124,7 +150,7 @@
 
   --muted-foreground: 220 14% 59%;
 
-  --accent: 286 48% 20%;
+  --accent: 307 62% 23%;
 
   --accent-foreground: 310 100% 84%;
 
@@ -133,11 +159,11 @@
   --destructive-foreground: 0 0% 100%;
 
   --input: 222 24% 23%;
-  --ring: 187 100% 53%;
-  --chart-1: 187 100% 53%;
-  --chart-2: 284 91% 68%;
-  --chart-3: 326 93% 65%;
-  --chart-4: 209 92% 67%;
+  --ring: 185 100% 56%;
+  --chart-1: 185 100% 56%;
+  --chart-2: 278 91% 68%;
+  --chart-3: 310 92% 64%;
+  --chart-4: 195 92% 67%;
   --chart-5: 158 58% 56%;
 
   --app-font-sans: 'Inter', sans-serif;
@@ -245,7 +271,7 @@
 
   --sidebar-border: 225 26% 14%;
 
-  --sidebar-primary: 187 100% 53%;
+  --sidebar-primary: 185 100% 56%;
 
   --sidebar-primary-foreground: 230 34% 6%;
 
@@ -253,7 +279,7 @@
 
   --sidebar-accent-foreground: 190 100% 72%;
 
-  --sidebar-ring: 187 100% 53%;
+  --sidebar-ring: 185 100% 56%;
 
   --popover: 229 30% 10%;
 
@@ -261,11 +287,11 @@
 
   --popover-border: 222 24% 19%;
 
-  --primary: 187 100% 53%;
+  --primary: 185 100% 56%;
 
   --primary-foreground: 230 34% 6%;
 
-  --secondary: 262 42% 19%;
+  --secondary: 278 46% 21%;
 
   --secondary-foreground: 270 100% 87%;
 
@@ -273,7 +299,7 @@
 
   --muted-foreground: 220 14% 59%;
 
-  --accent: 286 48% 20%;
+  --accent: 307 62% 23%;
 
   --accent-foreground: 310 100% 84%;
 
@@ -283,11 +309,11 @@
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
   --input: 222 24% 23%;
-  --ring: 187 100% 53%;
-  --chart-1: 187 100% 53%;
-  --chart-2: 284 91% 68%;
-  --chart-3: 326 93% 65%;
-  --chart-4: 209 92% 67%;
+  --ring: 185 100% 56%;
+  --chart-1: 185 100% 56%;
+  --chart-2: 278 91% 68%;
+  --chart-3: 310 92% 64%;
+  --chart-4: 195 92% 67%;
   --chart-5: 158 58% 56%;
 
   --shadow-2xs: 0px 2px 0px 0px hsl(187 100% 53% / 0);

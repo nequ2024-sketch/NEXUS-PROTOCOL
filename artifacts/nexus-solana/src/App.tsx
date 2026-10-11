@@ -52,12 +52,12 @@ function Home() {
       <header className="sticky top-0 z-30 border-b border-white/[0.075] bg-[#080b15]/90 backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-7 xl:px-10">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-cyan-200/15 bg-[#101521]">
-              <img src={visual('/visuals/nexus-logo.webp')} alt="NEXUS emblem" className="h-full w-full object-cover object-center" />
+            <div className="relative flex h-10 w-12 items-center justify-center overflow-hidden rounded-xl border border-cyan-200/25 bg-[#05070d] shadow-[0_0_20px_rgba(24,224,255,0.14),0_0_28px_rgba(244,66,211,0.08)]">
+              <img src={visual('/visuals/nexus-logo.webp')} alt="NEXUS Protocol logo" className="h-full w-full object-contain object-center" />
             </div>
             <div className="leading-none">
               <div className="font-mono text-[15px] font-bold tracking-[0.22em] text-white">NEXUS</div>
-              <div className="mt-1.5 text-[9px] font-medium uppercase tracking-[0.22em] text-slate-500">Protocol console</div>
+              <div className="mt-1.5 text-[8px] font-medium uppercase tracking-[0.12em] text-slate-500">The future of trading is here</div>
             </div>
             <div className="ml-3 hidden h-7 w-px bg-white/10 sm:block" />
             <div data-testid="status-preview" className="hidden items-center gap-2 rounded-full border border-fuchsia-300/20 bg-fuchsia-400/[0.07] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-fuchsia-200 sm:flex">
@@ -92,17 +92,17 @@ function Home() {
       </header>
 
       <div className="relative mx-auto max-w-[1600px] px-4 pb-12 pt-5 sm:px-7 xl:px-10">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/15 bg-amber-300/[0.045] px-4 py-3" data-testid="status-preview-disclaimer">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-300/15 bg-cyan-300/[0.045] px-4 py-3" data-testid="status-preview-disclaimer">
           <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-200/15 bg-amber-200/[0.08] text-amber-200"><Eye size={14} /></div>
-            <p className="text-xs leading-relaxed text-amber-100/80"><span className="font-semibold text-amber-100">Preview only.</span> No live wallet, market data, token sale, or real-funds activity is available in this experience.</p>
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-cyan-200/15 bg-cyan-200/[0.08] text-cyan-200"><Eye size={14} /></div>
+            <p className="text-xs leading-relaxed text-slate-300"><span className="font-semibold text-cyan-100">Preview only.</span> No live wallet, market data, token sale, or real-funds activity is available in this experience.</p>
           </div>
-          <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.18em] text-amber-100/45">Build  /  concept</span>
+          <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.18em] text-cyan-100/50">Build  /  concept</span>
         </div>
 
         <section id="overview" aria-labelledby="welcome-heading" className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
           <div className="relative min-h-[300px] overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0b0f1a] sm:min-h-[340px]">
-            <img src={visual('/visuals/nexus-ai-market.webp')} alt="Illustrative NEXUS interface artwork with abstract network and market panels" className="absolute inset-0 h-full w-full object-cover object-center opacity-[0.48]" />
+            <img src={visual('/visuals/nexus-brand-hero.webp')} alt="NEXUS Protocol logo artwork in neon cyan and magenta" className="absolute inset-0 h-full w-full object-contain object-center opacity-[0.64] sm:object-right sm:opacity-[0.82]" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#090c16] via-[#090c16]/90 to-[#090c16]/25" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#090c16]/85 via-transparent to-[#090c16]/10" />
             <div className="relative flex min-h-[300px] flex-col justify-between p-5 sm:min-h-[340px] sm:p-8">
@@ -154,7 +154,7 @@ function Home() {
                   <div className="text-[10px] text-slate-500">Target network</div>
                   <div className="mt-1 text-xs font-medium text-slate-200">Solana Devnet preview</div>
                 </div>
-                <span className="rounded-md border border-amber-200/15 bg-amber-200/[0.06] px-2 py-1 text-[9px] uppercase tracking-wider text-amber-100/70">Awaiting integration</span>
+                <span className="rounded-md border border-fuchsia-200/15 bg-fuchsia-200/[0.06] px-2 py-1 text-[9px] uppercase tracking-wider text-fuchsia-100/75">Awaiting integration</span>
               </div>
               <div className="relative mt-4 grid grid-cols-2 gap-3">
                 <div>
@@ -261,7 +261,7 @@ function Home() {
               <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-cyan-200/70"><span className="h-px w-5 bg-cyan-300/50" /> Interface study</div>
               <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-100">Terminal, imagined.</h2>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200/15 bg-amber-200/[0.04] px-2.5 py-1.5 text-[9px] uppercase tracking-[0.12em] text-amber-100/65"><Eye size={12} /> Illustrative, not live market data</span>
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-fuchsia-200/15 bg-fuchsia-200/[0.04] px-2.5 py-1.5 text-[9px] uppercase tracking-[0.12em] text-fuchsia-100/75"><Eye size={12} /> Illustrative, not live market data</span>
           </div>
           <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0b0f19]">
             <div className="absolute inset-0 bg-gradient-to-t from-[#080b14]/75 via-transparent to-[#080b14]/10" />
@@ -274,7 +274,7 @@ function Home() {
                   <div className="mt-0.5 text-[9px] text-slate-500">Artwork only · no market feed or price data</div>
                 </div>
               </div>
-              <span data-testid="status-terminal-illustrative" className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.12em] text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-amber-200/70" /> Not connected</span>
+              <span data-testid="status-terminal-illustrative" className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.12em] text-slate-400"><span className="h-1.5 w-1.5 rounded-full bg-cyan-200/70" /> Not connected</span>
             </div>
           </div>
         </section>
@@ -297,7 +297,7 @@ function Home() {
               <article key={item.title} data-testid={`readiness-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} className="rounded-xl border border-white/[0.075] bg-[#0b0f19]/85 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.025] text-slate-400">{item.icon}</div>
-                  <span className="rounded border border-amber-200/10 bg-amber-200/[0.04] px-2 py-1 font-mono text-[8px] uppercase tracking-wider text-amber-100/60">Required</span>
+                  <span className="rounded border border-fuchsia-200/10 bg-fuchsia-200/[0.04] px-2 py-1 font-mono text-[8px] uppercase tracking-wider text-fuchsia-100/75">Required</span>
                 </div>
                 <h3 className="mt-4 text-xs font-semibold text-slate-200">{item.title}</h3>
                 <p className="mt-2 text-[10px] leading-4 text-slate-500">{item.text}</p>
@@ -328,11 +328,11 @@ function Home() {
 
         <footer className="mt-9 flex flex-col gap-4 border-t border-white/[0.07] pt-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-7 w-7 overflow-hidden rounded-md border border-white/[0.08]"><img src={visual('/visuals/nexus-logo.webp')} alt="" className="h-full w-full object-cover" /></div>
+            <div className="h-7 w-9 overflow-hidden rounded-md border border-cyan-200/15 bg-[#05070d]"><img src={visual('/visuals/nexus-logo.webp')} alt="" className="h-full w-full object-contain" /></div>
             <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-slate-400">NEXUS <span className="font-normal tracking-normal text-slate-600">/ protocol preview</span></span>
           </div>
           <p className="max-w-2xl text-[9px] leading-4 text-slate-600">This is a non-functional product preview. It is not an offer to sell tokens or financial advice. Do not send funds or connect a wallet. No transaction, market, security, or legal status is implied.</p>
-          <div className="flex shrink-0 items-center gap-2 rounded-md border border-white/[0.07] px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[0.14em] text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-slate-500" /> Preview only</div>
+          <div className="flex shrink-0 items-center gap-2 rounded-md border border-white/[0.07] px-2.5 py-1.5 font-mono text-[8px] uppercase tracking-[0.14em] text-slate-500"><span className="h-1.5 w-1.5 rounded-full bg-fuchsia-300" /> Preview only</div>
         </footer>
       </div>
     </main>
