@@ -63,43 +63,49 @@ export default function LaunchpadPage() {
       </header>
 
       <section className="hero" aria-labelledby="hero-title">
-        <div className="hero-art" aria-hidden="true" />
+        <div className="hero-art">
+          <img
+            src="/nexus-solana/visuals/nexus-ai-market.webp"
+            alt="NEXUS neural network and market-intelligence concept artwork; no live market data is shown"
+          />
+          <span className="art-caption">CAMPAIGN VISUAL / CONCEPT ART — NOT LIVE DATA</span>
+        </div>
         <div className="hero-content">
-          <div className="eyebrow"><span className="eyebrow-line" /> SOLANA DEVNET · LAUNCHPAD</div>
+          <div className="eyebrow"><span className="eyebrow-line" /> NEXUS PROTOCOL <b> / </b> SOLANA DEVNET</div>
           <h1 id="hero-title">
-            The next wave
+            Launch into
             <br />
-            starts <span>here.</span>
+            the <span>unknown.</span>
           </h1>
           <p className="hero-copy">
-            A new frontier for token launches on Solana.
+            A NEXUS launchpad preview for Solana Devnet.
             <br className="desktop-break" />
-            Explore the network as it takes shape.
+            The network is not connected. Nothing here is live.
           </p>
           <div className="hero-actions">
             <button className="primary-action" type="button" disabled data-testid="create-token-unavailable">
-              <span>Create a token</span>
+              <span>Token creation</span>
               <ArrowIcon />
               <span className="soon-label">SOON</span>
             </button>
-            <span className="action-note">Creation flow is not live yet</span>
+            <span className="action-note">Unavailable until the launch program is connected</span>
           </div>
           <div className="hero-footnote">
             <span className="tiny-cross">+</span>
-            DEVNET ONLY <span className="footnote-divider">/</span> NO MAINNET ASSETS
+            DEVNET PREVIEW <span className="footnote-divider">/</span> NO LIVE CHAIN DATA
           </div>
         </div>
 
         <aside className="launch-panel" aria-label="Launchpad status">
           <div className="panel-topline">
-            <span className="panel-kicker">NETWORK ACTIVITY</span>
-            <span className="live-indicator"><i /> STANDBY</span>
+            <span className="panel-kicker">NETWORK STATUS</span>
+            <span className="live-indicator"><i /> NOT CONNECTED</span>
           </div>
           <div className="panel-title-row">
             <h2>Launch stream</h2>
             <span className="stream-mark" aria-hidden="true"><PulseIcon /></span>
           </div>
-          <p className="panel-intro">Launch data will appear here once direct Devnet reading is connected.</p>
+          <p className="panel-intro">A live launch feed will appear here after direct Devnet reading is connected.</p>
           <div className="empty-stream" data-testid="launch-stream-empty">
             <div className="empty-orbit" aria-hidden="true">
               <span className="orbit-ring orbit-one" />
@@ -118,7 +124,7 @@ export default function LaunchpadPage() {
           </div>
         </aside>
 
-        <div className="hero-coordinate" aria-hidden="true">DEVNET SOURCE <span>/</span> NOT CONNECTED</div>
+        <div className="hero-coordinate">ART DIRECTION <span>/</span> NEXUS NEURAL NETWORK</div>
       </section>
 
       <section className="signal-row" aria-label="Platform status">
@@ -140,9 +146,23 @@ export default function LaunchpadPage() {
         </div>
       </section>
 
+      <section className="terminal-feature" aria-labelledby="terminal-title">
+        <div className="terminal-copy">
+          <span className="section-index">02 / INTERFACE STUDY</span>
+          <p className="terminal-overline">A GLIMPSE OF THE NEXUS SYSTEM</p>
+          <h2 id="terminal-title">One network.<br /><em>Many signals.</em></h2>
+          <p className="terminal-description">The terminal artwork explores how NEXUS could bring market intelligence into one visual field. It is campaign concept art only—not a trading terminal, live chart, or source of market data.</p>
+          <div className="terminal-note"><span aria-hidden="true" /> CONCEPT PREVIEW <b>·</b> NO EXCHANGE CONNECTION</div>
+        </div>
+        <figure className="terminal-art">
+          <img src="/nexus-solana/visuals/nexus-terminal-reveal.webp" alt="NEXUS campaign concept artwork depicting a glassy trading-terminal interface over a night city" />
+          <figcaption><span>FIG. 01</span> NEXUS TERMINAL STUDY <b>—</b> ILLUSTRATIVE ARTWORK, NOT LIVE DATA</figcaption>
+        </figure>
+      </section>
+
       <section className="how-section" aria-labelledby="how-title">
         <div className="how-heading">
-          <span className="section-index">02 / GETTING STARTED</span>
+          <span className="section-index">03 / GETTING STARTED</span>
           <h2 id="how-title">A launchpad, <span>in progress.</span></h2>
           <p>Three parts of the experience are taking shape. No wallet connection or on-chain actions are available yet.</p>
         </div>
@@ -227,7 +247,10 @@ export default function LaunchpadPage() {
         .wallet-button { border: 1px solid rgba(89,236,250,.35); background: transparent; color: #95a5b4; height: 36px; padding: 0 13px; border-radius: 3px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: not-allowed; opacity: .72; }
         .wallet-symbol { color: var(--cyan); font-size: 17px; }
         .hero { width: min(1352px, calc(100% - 88px)); margin: 0 auto; min-height: 588px; position: relative; display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; }
-        .hero-art { position: absolute; z-index: -1; width: 100%; height: 560px; left: 0; top: 4px; background-image: linear-gradient(90deg, #070b13 0%, rgba(7,11,19,.95) 20%, rgba(7,11,19,.61) 54%, #070b13 100%), linear-gradient(0deg, #070b13 0%, transparent 41%, rgba(7,11,19,.25) 100%), url('/nexus-solana/visuals/nexus-energy-boot.png'); background-size: cover; background-position: center 47%; opacity: .45; mix-blend-mode: screen; mask-image: linear-gradient(to bottom, black 0%, black 52%, transparent 100%); }
+        .hero-art { position: absolute; z-index: -1; width: calc(100% + 40px); height: 610px; left: -20px; top: -8px; overflow: hidden; pointer-events: none; mask-image: linear-gradient(to bottom, black 0%, black 68%, transparent 100%); }
+        .hero-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 48%; opacity: .94; }
+        .hero-art:after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, #070b13 0%, rgba(7,11,19,.94) 13%, rgba(7,11,19,.62) 38%, rgba(7,11,19,.06) 72%, rgba(7,11,19,.36) 100%), linear-gradient(0deg, #070b13 0%, transparent 34%, rgba(7,11,19,.04) 80%, #070b13 100%); }
+        .art-caption { position: absolute; right: 4.5%; bottom: 61px; z-index: 1; font: 8px 'DM Mono', monospace; letter-spacing: .13em; color: #b8d1da; padding: 8px 10px; border: 1px solid rgba(94,220,238,.34); background: rgba(6,12,22,.7); backdrop-filter: blur(12px); }
         .hero-content { padding: 44px 0 52px 4.5%; align-self: center; margin-top: -8px; }
         .eyebrow, .section-index, .panel-kicker, .hero-footnote, .panel-foot, .step-number, .step-state, .footer-build, .site-footer > p { font-family: 'DM Mono', monospace; }
         .eyebrow { color: #98a9b6; font-size: 10px; letter-spacing: .2em; display: flex; align-items: center; gap: 11px; }
@@ -314,13 +337,31 @@ export default function LaunchpadPage() {
         .site-footer > p span { color: var(--pink); padding: 0 5px; }
         .footer-build { color: #647382; font-size: 8px; letter-spacing: .1em; display: flex; align-items: center; gap: 8px; }
         .footer-build i { width: 5px; height: 5px; border-radius: 50%; background: var(--cyan); }
+        .terminal-feature { width: min(1352px, calc(100% - 88px)); margin: 42px auto 0; padding: 37px 4.5% 43px; display: grid; grid-template-columns: .72fr 1.28fr; gap: 6%; align-items: center; border: 1px solid rgba(126,170,192,.16); background: linear-gradient(115deg, rgba(17,27,42,.87), rgba(8,13,23,.88) 56%, rgba(30,14,34,.57)); position: relative; }
+        .terminal-feature:before { content: ''; position: absolute; width: 90px; height: 1px; left: 4.5%; top: -1px; background: linear-gradient(90deg,var(--cyan),var(--pink)); }
+        .terminal-copy .section-index { display: block; margin-bottom: 32px; }
+        .terminal-overline { color: #a3b5c2; font: 9px 'DM Mono', monospace; letter-spacing: .16em; margin: 0 0 12px; }
+        .terminal-copy h2 { font-size: clamp(30px,3.5vw,46px); line-height: 1.02; letter-spacing: -.065em; font-weight: 600; margin: 0; }
+        .terminal-copy h2 em { color: var(--cyan); font-style: normal; }
+        .terminal-description { color: #8d9eac; font-size: 11px; line-height: 1.85; margin: 19px 0 21px; max-width: 330px; }
+        .terminal-note { font: 8px 'DM Mono', monospace; letter-spacing: .1em; color: #b4c5ce; display: flex; align-items: center; gap: 8px; }
+        .terminal-note span { width: 6px; height: 6px; background: #b2e474; box-shadow: 0 0 9px rgba(178,228,116,.5); border-radius: 50%; }
+        .terminal-note b { color: var(--pink); font-weight: 400; }
+        .terminal-art { min-width: 0; margin: 0; border: 1px solid rgba(96,219,238,.3); background: #080d15; box-shadow: 0 18px 50px rgba(0,0,0,.32), 0 0 34px rgba(52,178,208,.08); position: relative; }
+        .terminal-art:before, .terminal-art:after { content: ''; position: absolute; width: 18px; height: 18px; z-index: 1; pointer-events: none; }
+        .terminal-art:before { top: -1px; left: -1px; border-top: 1px solid var(--cyan); border-left: 1px solid var(--cyan); }
+        .terminal-art:after { right: -1px; bottom: -1px; border-right: 1px solid var(--pink); border-bottom: 1px solid var(--pink); }
+        .terminal-art img { display: block; width: 100%; height: auto; }
+        .terminal-art figcaption { border-top: 1px solid rgba(153,185,208,.16); padding: 10px 13px; color: #94a7b3; font: 8px 'DM Mono', monospace; letter-spacing: .075em; }
+        .terminal-art figcaption span { color: var(--cyan); margin-right: 10px; }
+        .terminal-art figcaption b { color: var(--pink); font-weight: 400; margin: 0 4px; }
 
         @media (min-width: 1500px) {
           .hero { min-height: 636px; }
-          .hero-art { height: 612px; }
+          .hero-art { height: 660px; }
         }
         @media (max-width: 900px) {
-          .topbar, .hero, .signal-row, .how-section, .site-footer { width: calc(100% - 48px); }
+          .topbar, .hero, .signal-row, .how-section, .site-footer, .terminal-feature { width: calc(100% - 48px); }
           .brand { min-width: auto; }
           .primary-nav { margin-left: 34px; gap: 24px; }
           .hero { min-height: 570px; grid-template-columns: 1fr .93fr; }
@@ -332,7 +373,7 @@ export default function LaunchpadPage() {
           .steps { gap: 14px; }
         }
         @media (max-width: 650px) {
-          .topbar, .hero, .signal-row, .how-section, .site-footer { width: calc(100% - 36px); }
+          .topbar, .hero, .signal-row, .how-section, .site-footer, .terminal-feature { width: calc(100% - 36px); }
           .topbar { height: 70px; }
           .brand-mark { width: 29px; height: 29px; }
           .brand-word { font-size: 11px; letter-spacing: .13em; }
@@ -343,7 +384,10 @@ export default function LaunchpadPage() {
           .wallet-button { height: 32px; padding: 0 8px; font-size: 9px; }
           .wallet-symbol { font-size: 14px; }
           .hero { display: flex; flex-direction: column; align-items: stretch; padding: 54px 0 32px; }
-          .hero-art { height: 510px; width: calc(100% + 36px); left: -18px; top: 0; background-position: 51% center; opacity: .38; }
+          .hero-art { height: 560px; width: calc(100% + 36px); left: -18px; top: 0; mask-image: linear-gradient(to bottom, black 0%, black 74%, transparent 100%); }
+          .hero-art img { object-position: 57% center; }
+          .hero-art:after { background: linear-gradient(90deg, rgba(7,11,19,.83), rgba(7,11,19,.23) 68%, rgba(7,11,19,.45)), linear-gradient(0deg, #070b13 0%, transparent 38%, rgba(7,11,19,.1) 100%); }
+          .art-caption { right: 0; bottom: 16px; font-size: 7px; padding: 7px; }
           .hero-content { padding: 0 2px 37px; margin: 0; }
           .eyebrow { font-size: 9px; }
           h1 { font-size: clamp(56px, 14vw, 78px); margin-top: 22px; }
@@ -357,6 +401,12 @@ export default function LaunchpadPage() {
           .empty-stream { margin: 0 17px; min-height: 191px; }
           .panel-foot { margin: 0 17px; }
           .hero-coordinate { display: none; }
+          .terminal-feature { display: flex; flex-direction: column; align-items: stretch; gap: 27px; margin-top: 28px; padding: 27px 18px 20px; }
+          .terminal-feature:before { left: 18px; }
+          .terminal-copy .section-index { margin-bottom: 23px; }
+          .terminal-copy h2 { font-size: 34px; }
+          .terminal-description { max-width: 100%; }
+          .terminal-art figcaption { font-size: 7px; line-height: 1.7; }
           .signal-row { padding: 23px 0; grid-template-columns: 1fr; gap: 16px; }
           .signal-heading { padding: 0; }
           .signal-copy h2 { font-size: 18px; }
