@@ -1,0 +1,152 @@
+# 🎯 المهمة الأساسية
+
+أنت مهندس Full-Stack + Blockchain + Quant + DevOps خبير. مهمتك
+بناء نظام تداول ذكي متكامل من الصفر لمنصة "NEXUS PROTOCOL" يعمل
+على BSC Mainnet، ويتضمن:
+
+1. روبوتات تداول ذكية (AI Trading Bots) تتخذ قراراتها من حركة السوق
+2. ربط محافظ المستخدمين (MetaMask + WalletConnect)
+3. التحقق من ملكية المحفظة عبر التوقيع الرقمي
+4. تتبع الأرصدة (USDT + NEXUS + BNB) لحظياً
+5. حساب الرسوم (Gas Fees + Trading Fees) بدقة
+6. تتبع الأرباح والخسائر (PnL) لكل صفقة
+7. لوحة تحكم (Dashboard) تعرض كل شيء بشكل لحظي
+8. سجل صفقات كامل + تحليلات أداء
+9. نظام اشتراكات (Free / Starter / Pro / Enterprise)
+10. تكامل on-chain: تسجيل كل إشارة وصفقة على BSC
+
+الشبكة: BSC Mainnet (Chain ID 56)
+العقد المنشور: 0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705
+الرصيد الأولي: 700,000,038 NEXUS
+Treasury: 0x03884d36AE674bFa3B2b54b3bff92E13405389AF
+
+التقنيات:
+- Backend: Python 3.11+ (Flask + ccxt + web3.py + pandas + ta)
+- Frontend: HTML/CSS/JS + ethers.js v6 + Chart.js
+- Database: SQLite (للتطوير) → PostgreSQL (للإنتاج)
+- Real-time: WebSocket (websockets library + python-socketio)
+- Smart Contracts: Solidity ^0.8.19 + OpenZeppelin v4.9.0
+
+---
+
+# 📋 قواعد العمل الإلزامية
+
+1. **أمان أولاً**: لا مفاتيح سرية في الكود — كل شيء من .env
+2. **Testnet قبل Mainnet**: أي بوت جديد يُختبر على Testnet أولاً
+3. **Dry Run Mode**: كل بوت له وضع تجريبي قبل التنفيذ الفعلي
+4. **Stop Loss إلزامي**: لا صفقة بدون SL و TP محددين
+5. **Max Position Size**: حد أقصى لكل صفقة (2% من الرصيد)
+6. **Daily Loss Limit**: إيقاف التداول عند خسارة 5% في يوم
+7. **Rate Limiting**: احترام حدود Binance API
+8. **Error Handling**: كل عملية شبكة لها try/except
+9. **Logging**: كل قرار وصفقة تُسجل في ملف logs
+10. **Time-series only**: لا shuffle في تدريب AI
+11. **USDT على BSC = 18 decimals** (وليس 6)
+12. **BSC يستخدم PoA** → ExtraDataToPOAMiddleware
+
+---
+
+# 🗂️ هيكل المشروع الكامل
+
+nexus-trading-system/
+├── backend/
+│   ├── __init__.py
+│   ├── app.py                    # Flask main app
+│   ├── config.py                 # الإعدادات من .env
+│   ├── database.py               # SQLite/PostgreSQL
+│   ├── auth.py                   # JWT + Signature verification
+│   ├── websocket_server.py       # Real-time updates
+│   ├── routes/
+│   │   ├── auth_routes.py        # /api/auth/*
+│   │   ├── user_routes.py        # /api/user/*
+│   │   ├── bot_routes.py         # /api/bot/*
+│   │   ├── trade_routes.py       # /api/trade/*
+│   │   ├── balance_routes.py     # /api/balance/*
+│   │   ├── pnl_routes.py         # /api/pnl/*
+│   │   └── admin_routes.py       # /api/admin/*
+│   └── middleware/
+│       ├── rate_limiter.py       # Flask-Limiter
+│       ├── jwt_middleware.py
+│       └── error_handler.py
+├── bots/
+│   ├── __init__.py
+│   ├── base_bot.py               # Base class لكل البوتات
+│   ├── rsi_bot.py                # RSI strategy
+│   ├── macd_bot.py               # MACD strategy
+│   ├── breakout_bot.py           # Breakout strategy
+│   ├── grid_bot.py               # Grid trading
+│   ├── dca_bot.py                # Dollar-Cost Averaging
+│   ├── ai_bot.py                 # AI/ML-based
+│   ├── arbitrage_bot.py          # DEX-CEX arbitrage
+│   ├── market_tracker.py         # جلب بيانات السوق
+│   ├── bot_manager.py            # إدارة كل البوتات
+│   ├── position_manager.py       # إدارة الصفقات المفتوحة
+│   ├── risk_manager.py           # إدارة المخاطر
+│   ├── fee_calculator.py         # حساب الرسوم
+│   ├── pnl_tracker.py            # تتبع الأرباح
+│   └── onchain_logger.py         # تسجيل on-chain
+├── ai/
+│   ├── __init__.py
+│   ├── trainer.py                # تدريب النماذج
+│   ├── predictor.py              # التنبؤ
+│   ├── sentiment.py              # تحليل المشاعر
+│   └── models/
+│       ├── nexus_model.pkl
+│       └── nexus_scaler.pkl
+├── notify/
+│   ├── __init__.py
+│   ├── telegram_notifier.py
+│   ├── email_notifier.py
+│   └── webhook_notifier.py
+├── frontend/
+│   ├── index.html                # الصفحة الرئيسية
+│   ├── dashboard.html            # لوحة التحكم
+│   ├── bots.html                 # صفحة إدارة البوتات
+│   ├── trades.html               # سجل الصفقات
+│   ├── presale.html              # شراء NEXUS
+│   ├── assets/
+│   │   ├── css/
+│   │   │   └── style.css
+│   │   └── js/
+│   │       ├── app.js
+│   │       ├── wallet.js         # MetaMask connection
+│   │       ├── auth.js           # Signature auth
+│   │       ├── dashboard.js      # Dashboard logic
+│   │       ├── bots.js           # Bot controls
+│   │       ├── charts.js         # Chart.js integration
+│   │       ├── websocket.js      # WebSocket client
+│   │       └── config.js         # Contract addresses
+│   └── abis/
+│       ├── NexusToken.json
+│       └── Presale.json
+├── contracts/                    # (موجودة - لا تغيير)
+├── scripts/
+│   ├── setup_db.py
+│   ├── create_admin.py
+│   └── backtest.py
+├── tests/
+│   ├── test_bots.py
+│   ├── test_api.py
+│   └── test_pnl.py
+├── logs/
+├── .env.example
+├── .gitignore
+├── requirements.txt
+├── docker-compose.yml
+├── run.sh
+└── README.md
+
+---
+
+# 📝 المواصفات التفصيلية لكل مكون
+
+## 🔐 1. المصادقة والتحقق من المحفظة
+
+### backend/auth.py
+- `generate_jwt(wallet_address)` → JWT صالح 24 ساعة
+- `verify_signature(address, message, signature)` → bool
+  - يستخدم `eth_account.Account.recover_message()`
+  - يتحقق أن `recovered_address == address`
+- `require_auth` decorator للـ Flask routes
+
+### backend/routes/auth_routes.py
