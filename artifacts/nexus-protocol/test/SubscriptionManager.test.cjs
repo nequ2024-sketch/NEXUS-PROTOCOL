@@ -1,53 +1,110 @@
-// اختبارات SubscriptionManager بالعربية: الخطط والخصم المتأخر والإلغاء.
+// Offline tests for subscription payments, renewals, cancellation, and upgrades.
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+
+const DAY = 86_400n;
+const MONTH = 30n * DAY;
+const e18 = (value) => ethers.parseUnits(String(value), 18);
 
 describe("SubscriptionManager", function () {
   async function deployManager() {
     const [owner, alice, keeper, outsider] = await ethers.getSigners();
     const Payment = await ethers.getContractFactory("MockPaymentToken");
-    const payment = await Payment.deploy();
+    const usdt = await Payment.deploy();
+    const Nexus = await ethers.getContractFactory("NexusToken");
+    const nexus = await Nexus.deploy(owner.address);
     const Manager = await ethers.getContractFactory("SubscriptionManager");
-    const manager = await Manager.deploy(await payment.getAddress());
-    await manager.createPlan(ethers.parseEther("49"), 30n * 86_400n);
-    await payment.mint(alice.address, ethers.parseEther("1000"));
-    await payment.connect(alice).approve(await manager.getAddress(), ethers.MaxUint256);
+    const manager = await Manager.deploy(await usdt.getAddress(), await nexus.getAddress());
+    await manager.createPlan("STARTER", e18(49), e18(3920), MONTH);
+    await manager.createPlan("PRO", e18(199), e18(15920), MONTH);
+    await manager.createPlan("ENTERPRISE", e18(999), e18(79920), 365n * DAY);
+    await usdt.mint(alice.address, e18(100_000));
+    await nexus.transfer(alice.address, e18(100_000));
+    await usdt.connect(alice).approve(await manager.getAddress(), ethers.MaxUint256);
+    await nexus.connect(alice).approve(await manager.getAddress(), ethers.MaxUint256);
     await manager.setKeeper(keeper.address, true);
-    return { manager, payment, owner, alice, keeper, outsider };
+    return { manager, usdt, nexus, owner, alice, keeper, outsider };
   }
 
-  it("charges the first payment immediately and permits access until expiry after cancellation", async function () {
-    const { manager, payment, alice } = await deployManager();
-    const before = await payment.balanceOf(alice.address);
-    await manager.connect(alice).subscribe(1);
-    const subscription = await manager.subscriptions(alice.address);
-    expect(await payment.balanceOf(alice.address)).to.equal(before - ethers.parseEther("49"));
-    expect(subscription.autoRenew).to.equal(true);
+  it("sets plan zero to FREE and enforces the configured 80:1 conversion", async function () {
+    const { manager, alice, owner } = await deployManager();
+    const freePlan = await manager.getPlan(0);
+    expect(freePlan.name).to.equal("FREE");
     expect(await manager.isActive(alice.address)).to.equal(true);
+    expect(await manager.getSubscription(alice.address)).to.deep.equal([0n, 0n, false]);
+    await expect(manager.connect(owner).createPlan("BAD", e18(49), e18(4900), MONTH))
+      .to.be.revertedWith("SubscriptionManager: incorrect NEXUS price");
+  });
+
+  it("charges the selected token and grants access only after a confirmed contract call", async function () {
+    const { manager, usdt, nexus, alice } = await deployManager();
+    const beforeUsdt = await usdt.balanceOf(alice.address);
+    await manager.connect(alice).subscribe(1, await usdt.getAddress());
+    const subscription = await manager.subscriptions(alice.address);
+    expect(await usdt.balanceOf(alice.address)).to.equal(beforeUsdt - e18(49));
+    expect(subscription.planId).to.equal(1n);
+    expect(subscription.autoRenew).to.equal(false);
+    expect(subscription.paymentToken).to.equal(await usdt.getAddress());
+    expect(await manager.isActive(alice.address)).to.equal(true);
+
+    const beforeNexus = await nexus.balanceOf(alice.address);
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(subscription.expiresAt + 1n)]);
+    await ethers.provider.send("evm_mine", []);
+    await manager.connect(alice).subscribe(1, await nexus.getAddress());
+    expect(await nexus.balanceOf(alice.address)).to.equal(beforeNexus - e18(3920));
+  });
+
+  it("requires explicit opt-in and only charges one renewal period at a time", async function () {
+    const { manager, usdt, alice, keeper, outsider } = await deployManager();
+    await manager.connect(alice).subscribe(1, await usdt.getAddress());
+    await expect(manager.connect(keeper).renew(alice.address))
+      .to.be.revertedWith("SubscriptionManager: renewal disabled");
+    await manager.connect(alice).setAutoRenew(true);
+    const first = await manager.subscriptions(alice.address);
+
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(first.expiresAt + 60n * DAY)]);
+    await ethers.provider.send("evm_mine", []);
+    const before = await usdt.balanceOf(alice.address);
+    const tx = await manager.connect(keeper).renew(alice.address);
+    const receipt = await tx.wait();
+    const afterRenewal = await manager.subscriptions(alice.address);
+    expect(await usdt.balanceOf(alice.address)).to.equal(before - e18(49));
+    expect(afterRenewal.expiresAt).to.equal(BigInt((await ethers.provider.getBlock(receipt.blockNumber)).timestamp) + MONTH);
+    expect(afterRenewal.autoRenew).to.equal(true);
+    await expect(manager.connect(outsider).renew(alice.address))
+      .to.be.revertedWith("SubscriptionManager: not keeper");
     await manager.connect(alice).cancel();
     expect((await manager.subscriptions(alice.address)).autoRenew).to.equal(false);
     expect(await manager.isActive(alice.address)).to.equal(true);
   });
 
-  it("charges all elapsed periods once and extends access by the same periods", async function () {
-    const { manager, payment, alice, keeper } = await deployManager();
-    await manager.connect(alice).subscribe(1);
+  it("charges only the prorated upgrade difference and preserves the old expiration", async function () {
+    const { manager, usdt, alice } = await deployManager();
+    await manager.connect(alice).subscribe(1, await usdt.getAddress());
     const initial = await manager.subscriptions(alice.address);
-    const price = ethers.parseEther("49");
-    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(initial.lastCharged + 60n * 86_400n)]);
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(initial.lastCharged + 15n * DAY)]);
     await ethers.provider.send("evm_mine", []);
-    await payment.connect(alice).approve(await manager.getAddress(), ethers.MaxUint256);
-    await expect(manager.connect(keeper).charge(alice.address))
-      .to.emit(manager, "Charged").withArgs(alice.address, 1, 2, price * 2n, initial.expiresAt + 60n * 86_400n);
-    expect(await manager.isActive(alice.address)).to.equal(true);
-    expect((await manager.subscriptions(alice.address)).lastCharged).to.equal(initial.lastCharged + 60n * 86_400n);
+    const tx = await manager.connect(alice).upgrade(2, await usdt.getAddress());
+    const receipt = await tx.wait();
+    const block = await ethers.provider.getBlock(receipt.blockNumber);
+    const remaining = initial.expiresAt - BigInt(block.timestamp);
+    const expectedDifference = (e18(199) * remaining / MONTH) - (e18(49) * remaining / MONTH);
+    const paymentEvent = receipt.logs
+      .map((log) => { try { return manager.interface.parseLog(log); } catch { return null; } })
+      .find((event) => event?.name === "SubscriptionPayment");
+    expect(paymentEvent.args.amount).to.equal(expectedDifference);
+    const upgraded = await manager.subscriptions(alice.address);
+    expect(upgraded.planId).to.equal(2n);
+    expect(upgraded.expiresAt).to.equal(initial.expiresAt);
+    expect(upgraded.autoRenew).to.equal(false);
   });
 
-  it("restricts keeper charges and plan administration", async function () {
+  it("restricts plan administration, accepts only configured payment tokens, and rejects bad decimals", async function () {
     const { manager, alice, outsider } = await deployManager();
-    await expect(manager.connect(outsider).createPlan(1, 1)).to.be.reverted;
-    await manager.connect(alice).subscribe(1);
-    await expect(manager.connect(outsider).charge(alice.address)).to.be.revertedWith("SubscriptionManager: not keeper");
-    await expect(manager.connect(alice).updatePlan(1, 1, 1, true)).to.be.reverted;
+    await expect(manager.connect(outsider).createPlan("TEST", e18(1), e18(80), DAY)).to.be.reverted;
+    await expect(manager.connect(alice).subscribe(1, outsider.address))
+      .to.be.revertedWith("SubscriptionManager: unsupported payment token");
+    await expect(manager.connect(alice).updatePlan(1, "STARTER", e18(1), e18(80), DAY, true))
+      .to.be.reverted;
   });
 });

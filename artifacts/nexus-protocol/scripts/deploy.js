@@ -117,24 +117,37 @@ async function main() {
 
   const subscriptions = await (
     await ethers.getContractFactory("SubscriptionManager")
-  ).deploy(paymentToken);
+  ).deploy(paymentToken, await token.getAddress());
   await subscriptions.waitForDeployment();
 
   const tokenInventory = ethers.parseUnits("300000000", 18);
   await (await token.transfer(await presale.getAddress(), tokenInventory)).wait();
+  await (await token.excludeFromFee(await subscriptions.getAddress(), true)).wait();
   await (await registry.authorizePublisher(publisher, true)).wait();
-  await (await subscriptions.setKeeper(publisher, true)).wait();
+  const subscriptionKeeper = address(
+    process.env.SUBSCRIPTION_KEEPER_ADDRESS || publisher,
+    "SUBSCRIPTION_KEEPER_ADDRESS",
+  );
+  await (await subscriptions.setKeeper(subscriptionKeeper, true)).wait();
 
-  const monthly = await subscriptions.createPlan(
+  await subscriptions.createPlan(
+    "STARTER",
     ethers.parseUnits("49", 18),
+    ethers.parseUnits("3920", 18),
     30n * 86_400n,
   );
-  await monthly.wait();
-  const annual = await subscriptions.createPlan(
-    ethers.parseUnits("499", 18),
+  await subscriptions.createPlan(
+    "PRO",
+    ethers.parseUnits("199", 18),
+    ethers.parseUnits("15920", 18),
+    30n * 86_400n,
+  );
+  await subscriptions.createPlan(
+    "ENTERPRISE",
+    ethers.parseUnits("999", 18),
+    ethers.parseUnits("79920", 18),
     365n * 86_400n,
   );
-  await annual.wait();
 
   const presaleSettings = {
     rate: tokensPerUsdt.toString(),
@@ -161,9 +174,12 @@ async function main() {
     signalRegistryDeploymentBlock: Number(registryReceipt.blockNumber),
     subscriptionManager: await subscriptions.getAddress(),
     subscriptionPlans: [
-      { planId: 1, label: "Monthly", price: "49", durationDays: 30 },
-      { planId: 2, label: "Annual", price: "499", durationDays: 365 },
+      { planId: 0, label: "FREE", priceUSDT: "0", priceNEXUS: "0", durationDays: null },
+      { planId: 1, label: "STARTER", priceUSDT: "49", priceNEXUS: "3920", durationDays: 30 },
+      { planId: 2, label: "PRO", priceUSDT: "199", priceNEXUS: "15920", durationDays: 30 },
+      { planId: 3, label: "ENTERPRISE", priceUSDT: "999", priceNEXUS: "79920", durationDays: 365 },
     ],
+    subscriptionKeeper,
     presaleSettings,
   };
   const outDir = path.join(__dirname, "..", "deployments");

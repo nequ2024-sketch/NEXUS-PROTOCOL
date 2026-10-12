@@ -55,11 +55,11 @@ async function apiRequest<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.body) headers['Content-Type'] = 'application/json';
-  if (options.token) headers.Authorization = `Bearer ${options.token}`;
   const response = await fetch(`${API_ROOT}${path}`, {
     method: options.body ? 'POST' : 'GET',
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
+    credentials: 'include',
     cache: 'no-store',
   });
   const result = await response.json().catch(() => ({})) as T & ApiEnvelope;
@@ -181,12 +181,14 @@ export function TradePanel({
         params: [challenge.message, wallet.address],
       });
       if (typeof signature !== 'string') throw new Error('Wallet did not return a signature.');
-      const session = await apiRequest<{ token: string }>('/auth/verify', {
+      const session = await apiRequest<{ authenticated: boolean }>('/auth/verify', {
         body: { wallet: wallet.address, signature },
       });
-      setToken(session.token);
-      onSessionTokenChange(session.token);
-      await loadOrders(session.token);
+      if (!session.authenticated) throw new Error('Wallet session could not be established.');
+      const cookieSession = 'http-only-cookie-session';
+      setToken(cookieSession);
+      onSessionTokenChange(cookieSession);
+      await loadOrders(cookieSession);
     } catch (error) {
       setMessage({
         kind: 'error',

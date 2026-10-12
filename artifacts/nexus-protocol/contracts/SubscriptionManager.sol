@@ -68,6 +68,7 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
         require(IERC20Metadata(nexus_).decimals() == 18, "SubscriptionManager: NEXUS must use 18 decimals");
         usdt = IERC20(usdt_);
         nexus = IERC20(nexus_);
+        plans[0] = Plan("FREE", 0, 0, 0, true);
     }
 
     function createPlan(
@@ -215,6 +216,11 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
     {
         UserSubscription storage subscription = subscriptions[user];
         return (subscription.planId, subscription.expiresAt, subscription.autoRenew);
+    }
+
+    function getPlan(uint256 planId) external view returns (Plan memory) {
+        if (planId == 0) return Plan("FREE", 0, 0, 0, true);
+        return plans[planId];
     }
 
     function setKeeper(address keeper, bool authorized) external onlyOwner {

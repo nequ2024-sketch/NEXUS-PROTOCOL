@@ -52,6 +52,11 @@ def initialize() -> None:
                 type TEXT NOT NULL,
                 verified_at INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS subscription_watchers (
+                wallet TEXT PRIMARY KEY,
+                first_verified_at INTEGER NOT NULL,
+                last_verified_at INTEGER NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS auth_nonces (
                 wallet TEXT PRIMARY KEY,
                 nonce TEXT NOT NULL,

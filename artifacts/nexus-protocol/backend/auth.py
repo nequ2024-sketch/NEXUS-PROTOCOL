@@ -101,13 +101,16 @@ def verify_signature(wallet: str, signature: str) -> str:
 
 
 def require_auth(function: Callable[..., Any]) -> Callable[..., Any]:
-    """التحقق من Bearer JWT وإرفاق عنوان المحفظة بالطلب."""
+    """التحقق من جلسة المحفظة في cookie آمنة أو من عميل Bearer قديم."""
     @wraps(function)
     def wrapped(*args: Any, **kwargs: Any) -> Any:
-        authorization = request.headers.get("Authorization", "")
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not token:
-            return jsonify({"error": "A Bearer token is required."}), 401
+        token = request.cookies.get("nexus_session", "")
+        if not token:
+            authorization = request.headers.get("Authorization", "")
+            scheme, _, bearer = authorization.partition(" ")
+            token = bearer if scheme.lower() == "bearer" else ""
+        if not token:
+            return jsonify({"error": "A wallet session is required."}), 401
         if not SECRET_KEY:
             return jsonify({"error": "Wallet sign-in is not configured."}), 503
         try:

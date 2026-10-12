@@ -85,7 +85,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.9.0",
+    "@openzeppelin/contracts": "4.9.0",
     "dotenv": "^16.6.1",
     "ethers": "^6.17.0",
     "lightweight-charts": "^5.2.1"

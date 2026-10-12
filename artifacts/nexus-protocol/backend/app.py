@@ -6,6 +6,7 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
 from typing import Any
 
@@ -28,6 +29,13 @@ from .notifier import send_telegram
 from .onchain import read_signals
 from . import trading
 from .ledger import build_wallet_ledger, performance_summary
+from .subscriptions import (
+    FEATURES_BY_PLAN,
+    keeper_configured,
+    read_subscription_state,
+    require_plan,
+    start_subscription_keeper,
+)
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("nexus.api")
@@ -39,11 +47,48 @@ socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS, path=socket_path)
 database.initialize()
 
 TX_HASH_PATTERN = re.compile(r"^0x[a-fA-F0-9]{64}$")
+RATE_LIMITS: dict[tuple[str, str], tuple[int, int]] = {}
+RATE_LIMIT_LOCK = threading.Lock()
+RATE_LIMITS_BY_ENDPOINT = {
+    "auth_nonce": 10,
+    "auth_verify": 10,
+    "verify_transaction": 8,
+    "verify_subscription_transaction": 8,
+    "trade_execute": 10,
+}
 CONTRACT_ENV = {
     "presale": "PRESALE_ADDRESS",
     "subscription": "SUBSCRIPTION_MANAGER_ADDRESS",
     "signal": "SIGNAL_REGISTRY_ADDRESS",
 }
+
+
+@app.before_request
+def enforce_api_rate_limit():
+    """Apply per-route IP throttling to every API endpoint."""
+    if not request.path.startswith(f"{API_PREFIX}/"):
+        return None
+    now = int(time.time())
+    endpoint = request.endpoint or request.path
+    limit = RATE_LIMITS_BY_ENDPOINT.get(endpoint, 60)
+    key = (request.remote_addr or "unknown", endpoint)
+    window = now // 60
+    with RATE_LIMIT_LOCK:
+        start, count = RATE_LIMITS.get(key, (window, 0))
+        if start != window:
+            count = 0
+            start = window
+        if count >= limit:
+            retry_after = max(1, 60 - now % 60)
+            response = jsonify({"error": "Rate limit exceeded; retry shortly."})
+            response.headers["Retry-After"] = str(retry_after)
+            return response, 429
+        RATE_LIMITS[key] = (start, count + 1)
+        if len(RATE_LIMITS) > 10_000:
+            for cached_key, (cached_window, _) in list(RATE_LIMITS.items()):
+                if cached_window < window:
+                    RATE_LIMITS.pop(cached_key, None)
+    return None
 
 
 def _json_body() -> dict[str, Any]:
@@ -60,6 +105,7 @@ def health():
             "chainId": 97,
             "testnetTradingReady": TESTNET_TRADING_READY,
             "autoTradingReady": AUTO_TRADING_READY,
+            "subscriptionKeeperConfigured": keeper_configured(),
             "websocket": "available",
         }
     )
@@ -79,7 +125,24 @@ def auth_verify():
     body = _json_body()
     try:
         token = verify_signature(body.get("wallet", ""), body.get("signature", ""))
-        return jsonify({"token": token, "tokenType": "Bearer", "expiresIn": 86400}), 200
+        response = jsonify(
+            {
+                "authenticated": True,
+                "wallet": Web3.to_checksum_address(body.get("wallet", "")),
+                "expiresIn": 86400,
+            }
+        )
+        forwarded_proto = request.headers.get("X-Forwarded-Proto", "").split(",")[0].strip()
+        response.set_cookie(
+            "nexus_session",
+            token,
+            max_age=86400,
+            httponly=True,
+            secure=request.is_secure or forwarded_proto == "https",
+            samesite="Strict",
+            path=API_PREFIX or "/",
+        )
+        return response, 200
     except ValueError as error:
         return jsonify({"error": str(error)}), 401
     except RuntimeError as error:
@@ -97,6 +160,33 @@ def get_user():
     if row is None:
         return jsonify({"error": "Wallet user was not found."}), 404
     return jsonify(dict(row))
+
+
+@app.get(f"{API_PREFIX}/auth/session")
+@require_auth
+def auth_session():
+    return jsonify({"authenticated": True, "wallet": Web3.to_checksum_address(g.wallet)})
+
+
+@app.get(f"{API_PREFIX}/subscriptions/access")
+@require_auth
+def subscription_access():
+    feature = request.args.get("feature", "")
+    if feature not in {"signals", "bots", "api"}:
+        return jsonify({"error": "feature must be signals, bots, or api."}), 400
+    try:
+        state = read_subscription_state(g.wallet)
+    except (RuntimeError, ValueError, OSError) as error:
+        return jsonify({"error": str(error)}), 503
+    required_plan = {"signals": 1, "bots": 2, "api": 3}[feature]
+    return jsonify(
+        {
+            **state,
+            "feature": feature,
+            "requiredPlanId": required_plan,
+            "allowed": state["active"] and state["planId"] >= required_plan,
+        }
+    )
 
 
 @app.post(f"{API_PREFIX}/reserve")
@@ -117,6 +207,8 @@ def reserve_wallet():
 
 
 @app.get(f"{API_PREFIX}/signals")
+@require_auth
+@require_plan("signals")
 def signals():
     address = os.getenv("SIGNAL_REGISTRY_ADDRESS")
     try:
@@ -125,6 +217,38 @@ def signals():
     except (RuntimeError, ValueError, requests.RequestException) as error:
         logger.warning("Signal registry read failed: %s", error)
         return jsonify({"available": False, "reason": str(error), "items": []}), 503
+
+
+@app.get(f"{API_PREFIX}/v1/signals")
+@require_auth
+@require_plan("api")
+def enterprise_signals_api():
+    """Enterprise API access to the same verified on-chain signal feed."""
+    address = os.getenv("SIGNAL_REGISTRY_ADDRESS")
+    try:
+        result = read_signals(address, request.args.get("limit", default=100, type=int) or 100)
+        return jsonify(result), 200 if result["available"] else 503
+    except (RuntimeError, ValueError, requests.RequestException) as error:
+        logger.warning("Enterprise signal API read failed: %s", error)
+        return jsonify({"available": False, "reason": str(error), "items": []}), 503
+
+
+@app.get(f"{API_PREFIX}/subscriptions")
+@require_auth
+def subscription_details():
+    try:
+        state = read_subscription_state(g.wallet)
+    except (RuntimeError, ValueError, OSError) as error:
+        return jsonify({"error": str(error)}), 503
+    return jsonify(
+        {
+            **state,
+            "planFeatures": {
+                str(plan_id): list(features)
+                for plan_id, features in FEATURES_BY_PLAN.items()
+            },
+        }
+    )
 
 
 @app.get(f"{API_PREFIX}/positions")
@@ -242,9 +366,146 @@ def verify_transaction():
         return jsonify({"error": "Unable to verify the transaction with BscScan."}), 502
     except Exception as error:
         if "UNIQUE constraint failed" in str(error):
-            return jsonify({"error": "Transaction was already verified."}), 409
+            return jsonify(
+                {
+                    "error": "Transaction was already verified.",
+                    "code": "ALREADY_VERIFIED",
+                }
+            ), 409
         raise
     return jsonify({"verified": True, "tx_hash": tx_hash, "type": tx_type}), 200
+
+
+@app.post(f"{API_PREFIX}/subscriptions/verify")
+def verify_subscription_transaction():
+    """Verify a user's purchase or upgrade event against a BscScan Testnet receipt."""
+    body = _json_body()
+    tx_hash = body.get("tx_hash", "")
+    if not isinstance(tx_hash, str) or not TX_HASH_PATTERN.fullmatch(tx_hash):
+        return jsonify({"error": "A valid transaction hash is required."}), 400
+    manager_address = os.getenv("SUBSCRIPTION_MANAGER_ADDRESS", "")
+    if not Web3.is_address(manager_address):
+        return jsonify({"error": "The verified BSC Testnet SubscriptionManager is not configured."}), 503
+    if not BSCSCAN_KEY:
+        return jsonify({"error": "BSCSCAN_KEY is not configured; BscScan verification is unavailable."}), 503
+
+    expected_to = Web3.to_checksum_address(manager_address).lower()
+    try:
+        response = requests.get(
+            "https://api-testnet.bscscan.com/api",
+            params={
+                "module": "proxy",
+                "action": "eth_getTransactionReceipt",
+                "txhash": tx_hash,
+                "apikey": BSCSCAN_KEY,
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        receipt = response.json().get("result")
+        if not isinstance(receipt, dict):
+            return jsonify({"error": "BscScan did not return a transaction receipt."}), 404
+        if receipt.get("status") != "0x1":
+            return jsonify({"error": "Transaction was not successful on BSC Testnet."}), 422
+
+        tx_response = requests.get(
+            "https://api-testnet.bscscan.com/api",
+            params={
+                "module": "proxy",
+                "action": "eth_getTransactionByHash",
+                "txhash": tx_hash,
+                "apikey": BSCSCAN_KEY,
+            },
+            timeout=15,
+        )
+        tx_response.raise_for_status()
+        transaction = tx_response.json().get("result")
+        if not isinstance(transaction, dict):
+            return jsonify({"error": "BscScan did not return the submitted transaction."}), 404
+        wallet = (transaction.get("from") or "").lower()
+        if not Web3.is_address(wallet):
+            return jsonify({"error": "Transaction signer is not a valid wallet address."}), 422
+        if (transaction.get("to") or "").lower() != expected_to:
+            return jsonify({"error": "Transaction was sent to a different contract."}), 422
+
+        expected_topic = Web3.keccak(
+            text="SubscriptionPayment(address,uint256,address,uint256,uint8,uint256)"
+        ).hex().lower()
+        verified_event = None
+        for log in receipt.get("logs", []):
+            topics = log.get("topics", [])
+            if (
+                (log.get("address") or "").lower() != expected_to
+                or len(topics) != 4
+                or str(topics[0]).lower() != expected_topic
+            ):
+                continue
+            event_wallet = "0x" + str(topics[1])[-40:]
+            plan_id = int(str(topics[2]), 16)
+            payment_token = Web3.to_checksum_address("0x" + str(topics[3])[-40:])
+            event_data = bytes.fromhex(str(log.get("data", "0x"))[2:])
+            if len(event_data) != 96:
+                continue
+            amount = int.from_bytes(event_data[0:32], "big")
+            action = int.from_bytes(event_data[32:64], "big")
+            expires_at = int.from_bytes(event_data[64:96], "big")
+            if (
+                event_wallet.lower() == wallet
+                and plan_id in {1, 2, 3}
+                and action in {1, 3}
+                and (amount > 0 or action == 3)
+                and expires_at > 0
+            ):
+                verified_event = {
+                    "wallet": wallet,
+                    "planId": plan_id,
+                    "paymentToken": payment_token,
+                    "amount": amount,
+                    "action": action,
+                    "expiresAt": expires_at,
+                }
+                break
+        if verified_event is None:
+            return jsonify({"error": "No valid subscription purchase or upgrade event was found in this receipt."}), 422
+
+        now = int(time.time())
+        with database.connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO transactions (tx_hash, wallet, amount, type, verified_at)
+                VALUES (?, ?, ?, 'subscription', ?)
+                """,
+                (tx_hash.lower(), wallet, str(verified_event["amount"]), now),
+            )
+            conn.execute(
+                """
+                INSERT INTO subscription_watchers (wallet, first_verified_at, last_verified_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(wallet) DO UPDATE SET last_verified_at=excluded.last_verified_at
+                """,
+                (wallet, now, now),
+            )
+    except requests.RequestException as error:
+        logger.error("BscScan subscription lookup failed: %s", error)
+        return jsonify({"error": "Unable to verify the subscription with BscScan."}), 502
+    except Exception as error:
+        if "UNIQUE constraint failed" in str(error):
+            return jsonify(
+                {
+                    "error": "Transaction was already verified.",
+                    "code": "ALREADY_VERIFIED",
+                }
+            ), 409
+        raise
+
+    return jsonify(
+        {
+            "verified": True,
+            "tx_hash": tx_hash,
+            "type": "subscription",
+            **verified_event,
+        }
+    ), 200
 
 
 @app.post(f"{API_PREFIX}/trade")
@@ -261,6 +522,7 @@ def trade():
 
 @app.post(f"{API_PREFIX}/trade/quote")
 @require_auth
+@require_plan("bots")
 def trade_quote():
     """إنشاء معاينة قصيرة العمر لأمر Spot Testnet، من دون إرساله."""
     body = _json_body()
@@ -328,6 +590,7 @@ def trade_quote():
 
 @app.post(f"{API_PREFIX}/trade/execute")
 @require_auth
+@require_plan("bots")
 def trade_execute():
     """استهلاك معاينة لمحفظتها مرة واحدة بعد موافقة صريحة على كل أمر."""
     body = _json_body()
@@ -464,6 +727,7 @@ def trade_orders():
 
 
 if __name__ == "__main__":
+    start_subscription_keeper()
     socketio.run(
         app,
         host="0.0.0.0",

@@ -31,7 +31,7 @@ def sign_in(client):
         "/api/auth/verify",
         json={"wallet": signer.address, "signature": signature},
     )
-    return signer.address, login_response.get_json()["token"]
+    return signer.address, "http-only-cookie-session"
 
 
 def testnet_market_responses():
@@ -72,6 +72,34 @@ def testnet_market_responses():
 class BackendTradingTests(unittest.TestCase):
     def setUp(self):
         self.client = app.test_client()
+        entitlement = patch(
+            "backend.subscriptions.read_subscription_state",
+            return_value={
+                "wallet": "0x0000000000000000000000000000000000000001",
+                "planId": 2,
+                "expiresAt": 4_000_000_000,
+                "autoRenew": False,
+                "active": True,
+                "features": ["signals", "bots"],
+                "chainId": 97,
+            },
+        )
+        entitlement.start()
+        self.addCleanup(entitlement.stop)
+        app_entitlement = patch(
+            "backend.app.read_subscription_state",
+            return_value={
+                "wallet": "0x0000000000000000000000000000000000000001",
+                "planId": 2,
+                "expiresAt": 4_000_000_000,
+                "autoRenew": False,
+                "active": True,
+                "features": ["signals", "bots"],
+                "chainId": 97,
+            },
+        )
+        app_entitlement.start()
+        self.addCleanup(app_entitlement.stop)
         self.wallet, self.token = sign_in(self.client)
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
@@ -223,11 +251,34 @@ class BackendTradingTests(unittest.TestCase):
         self.assertIn("not listed", response.get_json()["error"])
 
     def test_trade_quote_requires_wallet_authentication(self):
-        response = self.client.post(
+        anonymous_client = app.test_client()
+        response = anonymous_client.post(
             "/api/trade/quote",
             json={"symbol": "BTCUSDT", "side": "BUY", "amount": "10"},
         )
         self.assertEqual(response.status_code, 401)
+
+    def test_trade_quote_requires_pro_entitlement(self):
+        starter_access = patch(
+            "backend.subscriptions.read_subscription_state",
+            return_value={
+                "wallet": self.wallet.lower(),
+                "planId": 1,
+                "expiresAt": 4_000_000_000,
+                "autoRenew": False,
+                "paymentToken": "0x0000000000000000000000000000000000000002",
+                "active": True,
+                "features": ["signals"],
+                "chainId": 97,
+            },
+        )
+        with starter_access:
+            response = self.client.post(
+                "/api/trade/quote",
+                headers=self.headers,
+                json={"symbol": "BTCUSDT", "side": "BUY", "amount": "10"},
+            )
+        self.assertEqual(response.status_code, 403)
 
 
 if __name__ == "__main__":

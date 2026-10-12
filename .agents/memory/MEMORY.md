@@ -1,4 +1,5 @@
 - [NEXUS visual direction](nexus-visual-direction.md) — Use the supplied NEXUS campaign imagery prominently; label terminal artwork as illustrative, not live market data.
 - [NEXUS trading safety](nexus-trading-safety.md) — Exchange orders must require explicit user approval each time; no unattended trading.
+- [NEXUS subscription policy](nexus-subscription-policy.md) — User-approved plan pricing, feature tiers, 80:1 NEXUS payment rate, and renewal consent rules.
 - [NEXUS launch readiness](nexus-launch-readiness.md) — Treat testing, independent security review, legal checks, and honest performance/return claims as public-launch gates.
 - [GitHub upload authentication](github-upload-auth.md) — Confirm the GitHub remote is readable before staging or pushing; an attached integration may not authenticate Git CLI.

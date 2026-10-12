@@ -258,7 +258,7 @@ function apiRoot() {
 
 async function getLedgerData<T>(path: string, token: string): Promise<T> {
   const response = await fetch(`${apiRoot()}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: 'include',
     cache: 'no-store',
   });
   const data = await response.json().catch(() => ({}));

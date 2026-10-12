@@ -4,10 +4,11 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { Check, ChevronRight, CircleAlert, Clock3, Command, Fingerprint, LockKeyhole, Menu, Radio, ShieldCheck, Wallet, X } from 'lucide-react';
+import { Check, ChevronRight, CircleAlert, Command, Fingerprint, Menu, Radio, ShieldCheck, Wallet, X } from 'lucide-react';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { TESTNET_CHAIN_ID, type ContractName } from '@/lib/contracts';
 import { PresalePage } from '@/components/presale/presale-page';
+import { SubscriptionsPage } from '@/components/subscriptions/subscriptions-page';
 import { useTestnetDeployment } from '@/lib/testnet-deployment';
 
 const queryClient = new QueryClient();
@@ -142,17 +143,6 @@ function Overview({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
   </>;
 }
 
-function Subscriptions() {
-  return <>
-    <PageHead eyebrow="Entitlement layer / 03" title="Subscriptions" description="Review available access plans and the entitlement attached to your address. Plan terms and subscription state are sourced from the chain." badge="STATE UNAVAILABLE" />
-    <div className="callout purple-note" style={{ marginBottom: 14 }}><LockKeyhole /><span>Subscription contract has no verified testnet address configured. Plan pricing, duration and membership state are intentionally not displayed as facts.</span></div>
-    <div className="grid two-col"><Panel title="Available plans" tag="REGISTRY UNAVAILABLE" edge="#ff3de8"><div className="empty-state"><div className="empty-icon"><LockKeyhole /></div><strong>Plan data cannot be loaded</strong><p>No plan names, prices or durations are presented until the subscription contract is verified.</p></div></Panel><Panel title="Purchase controls" tag="DISABLED"><div className="empty-state"><div className="empty-icon"><CircleAlert /></div><strong>Purchases unavailable</strong><p>No subscription transaction can be prepared without an on-chain plan registry and deployed contract.</p></div></Panel></div>
-    <div className="section-title"><h2>Your subscription state</h2><span>LOOKUP REQUIRES ADDRESS + CONTRACT</span></div>
-    <div className="grid two-col"><Panel title="Current entitlement" tag="WALLET-SCOPED"><div className="stat-row"><span>PLAN ID</span><span>—</span></div><div className="stat-row"><span>EXPIRES AT</span><span>—</span></div><div className="stat-row"><span>AUTO-RENEW</span><span>—</span></div><div className="stat-row"><span>ENTITLEMENT</span><span>UNVERIFIED</span></div></Panel><Panel title="Renewal controls" tag="DISABLED" edge="#ff3de8"><div className="empty-state"><div className="empty-icon"><Clock3 /></div><strong>No subscription actions available</strong><p>Renewal and cancellation require a live contract and verified wallet state. No state changes can be made here.</p></div></Panel></div>
-    <div style={{ marginTop: 14 }}><ContractStatus name="subscriptions" /></div>
-  </>;
-}
-
 function Signals() {
   return <>
     <PageHead eyebrow="Signal intelligence / 04" title="On-chain signals" description="Published signals are immutable records read from the Nexus signal registry. This feed contains no seeded, illustrative or simulated trade data." badge="LIVE CONTRACT REQUIRED" />
@@ -171,7 +161,7 @@ function Router() {
   return <Shell wallet={wallet}><RoutedErrorBoundary><Switch>
     <Route path="/" component={() => <Overview wallet={wallet} />} />
     <Route path="/presale" component={() => <PresalePage wallet={wallet} />} />
-    <Route path="/subscriptions" component={Subscriptions} />
+    <Route path="/subscriptions" component={() => <SubscriptionsPage wallet={wallet} />} />
     <Route path="/signals" component={Signals} />
     <Route path="/terminal" component={() => <Suspense fallback={<div className="empty-state" role="status">Loading public market terminal…</div>}><TerminalPage wallet={wallet} /></Suspense>} />
     <Route component={NotFound} />
