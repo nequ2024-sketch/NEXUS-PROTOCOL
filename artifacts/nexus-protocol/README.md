@@ -31,16 +31,18 @@ pnpm --filter @workspace/nexus-protocol run typecheck
 ## نشر Testnet
 
 1. أضف القيم اللازمة إلى Replit Secrets، وليس إلى ملف متعقب:
-    - `PRIVATE_KEY` لمحفظة اختبار جديدة لا تحتوي أموالاً حقيقية
+    - `PRIVATE_KEY` لمحفظة نشر جديدة على Testnet فقط، لا تحتوي أموالاً حقيقية.
+    - `BSCSCAN_KEY` لمفتاح BscScan Testnet.
+    - `SUBSCRIPTION_KEEPER_PRIVATE_KEY` لمحفظة Keeper مستقلة مخصصة لـTestnet، ويجب تمويلها بـBNB تجريبي للغاز.
    - `TREASURY_ADDRESS` و `PUBLISHER_ADDRESS` (إن لم يُضبطا، تستخدم المحفظة الناشرة عنوان deployer على Testnet)
    - اختر واحداً فقط: `BSC_TESTNET_PAYMENT_TOKEN_ADDRESS` لرمز اختبار موجود بدقة 18 منزلة، أو `DEPLOY_TEST_MOCK_PAYMENT_TOKEN=true` لنشر mUSDT تجريبي بلا قيمة حقيقية.
    - `NEXUS_PER_USDT`, `PRESALE_MIN_PURCHASE_USDT`, `PRESALE_START_TIMESTAMP`, `PRESALE_DURATION_DAYS`
     - `PRESALE_HARD_CAP_NEXUS` (لا يتجاوز 300 مليون)
-    - `SUBSCRIPTION_KEEPER_ADDRESS` اختياري؛ عند غيابه يُصرّح عنوان الناشر كـkeeper في Testnet.
+    - `SUBSCRIPTION_KEEPER_ADDRESS` اختياري؛ عند ضبط مفتاح Keeper يُستنتج عنوانه ويُصرّح له تلقائياً، مع رفض عدم التطابق إذا ضُبط العنوان يدوياً.
 2. راجع إعدادات العقد وعناوين الرموز التجريبية، وتأكد من امتلاك المحفظة ما يكفي من BNB تجريبي للغاز.
 3. شغّل `pnpm --filter @workspace/nexus-protocol run deploy:testnet`.
 4. حدّث سجل النشر وعنوان العقد في بيئة الخادم كـ`SUBSCRIPTION_MANAGER_ADDRESS`. عند توفر `BSCSCAN_KEY`، شغّل `pnpm --filter @workspace/nexus-protocol run verify:testnet`.
-5. أضف `BSCSCAN_KEY` كـReplit Secret لتفعيل التحقق من عمليات الشراء. إذا رغبت بتشغيل التجديد، أضف `SUBSCRIPTION_KEEPER_PRIVATE_KEY` للمحفظة نفسها المصرح بها في العقد وفعّل `SUBSCRIPTION_KEEPER_ENABLED=true` بعد التحقق على Testnet. يبقى العامل معطلاً افتراضياً، ويتوقف عن التجديد إذا لم تكن الموافقة/الرصيد كافيين أو إذا تعذر اتصال RPC.
+5. استخدم `BSCSCAN_KEY` للتحقق من عمليات الشراء والتحقق من مصادر العقود. يظل عامل التجديد معطلاً افتراضياً؛ فعّله بـ`SUBSCRIPTION_KEEPER_ENABLED=true` فقط بعد اختبار العقد على Testnet. يتوقف التجديد إذا لم تكن موافقة/رصيد المستخدم كافيين أو إذا تعذر اتصال RPC.
 
 السكريبت يرفض أي شبكة غير BSC Testnet، ويتطلب اختيار رمز دفع وقيم Presale صريحة، ويتأكد من أن رمز الدفع يستخدم 18 منزلة عشرية. إذا كانت `PRESALE_START_TIMESTAMP=now` يبدأ البيع عند النشر؛ وإلا يجب أن يكون الطابع الزمني مستقبلياً. لا ينشر إلى Mainnet ولا يختار تلقائياً عقد USDT على Testnet. ينشئ خطط الاشتراك FREE وSTARTER وPRO وENTERPRISE بالقيم أعلاه، ويحوّل 300 مليون NEXUS إلى عقد البيع. بعد النشر يحفظ عناوين العقود العامة في سجل النشر وملف الواجهة.
 

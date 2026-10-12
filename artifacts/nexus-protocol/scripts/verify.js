@@ -46,7 +46,7 @@ async function main() {
     { address: deployment.signalRegistry, constructorArguments: [] },
     {
       address: deployment.subscriptionManager,
-      constructorArguments: [deployment.paymentToken],
+      constructorArguments: [deployment.paymentToken, deployment.nexusToken],
     },
   ];
 

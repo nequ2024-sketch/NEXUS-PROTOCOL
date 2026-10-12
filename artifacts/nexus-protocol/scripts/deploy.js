@@ -124,8 +124,23 @@ async function main() {
   await (await token.transfer(await presale.getAddress(), tokenInventory)).wait();
   await (await token.excludeFromFee(await subscriptions.getAddress(), true)).wait();
   await (await registry.authorizePublisher(publisher, true)).wait();
+  const keeperPrivateKey = process.env.SUBSCRIPTION_KEEPER_PRIVATE_KEY?.trim();
+  const derivedKeeperAddress = keeperPrivateKey
+    ? new ethers.Wallet(keeperPrivateKey).address
+    : "";
+  const configuredKeeperAddress =
+    process.env.SUBSCRIPTION_KEEPER_ADDRESS?.trim() || "";
+  if (
+    configuredKeeperAddress &&
+    derivedKeeperAddress &&
+    configuredKeeperAddress.toLowerCase() !== derivedKeeperAddress.toLowerCase()
+  ) {
+    throw new Error(
+      "SUBSCRIPTION_KEEPER_ADDRESS does not match SUBSCRIPTION_KEEPER_PRIVATE_KEY.",
+    );
+  }
   const subscriptionKeeper = address(
-    process.env.SUBSCRIPTION_KEEPER_ADDRESS || publisher,
+    configuredKeeperAddress || derivedKeeperAddress || publisher,
     "SUBSCRIPTION_KEEPER_ADDRESS",
   );
   await (await subscriptions.setKeeper(subscriptionKeeper, true)).wait();
