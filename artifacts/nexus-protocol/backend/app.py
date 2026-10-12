@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import os
 import re
 import secrets
@@ -26,6 +27,7 @@ from .config import (
 from .notifier import send_telegram
 from .onchain import read_signals
 from . import trading
+from .ledger import build_wallet_ledger, performance_summary
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger("nexus.api")
@@ -130,10 +132,15 @@ def signals():
 def positions():
     with database.connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM positions WHERE wallet = ? AND status = 'open' ORDER BY opened_at DESC",
-            (g.wallet,),
+            """
+            SELECT rowid AS ledger_sequence, * FROM trade_orders
+            WHERE wallet = ? AND fills_json IS NOT NULL AND fills_json != '[]'
+            ORDER BY created_at ASC
+            """,
+            (g.wallet.lower(),),
         ).fetchall()
-    return jsonify({"available": True, "items": [dict(row) for row in rows]})
+    ledger = build_wallet_ledger([dict(row) for row in rows])
+    return jsonify({"available": True, "items": ledger["positions"]})
 
 
 @app.get(f"{API_PREFIX}/history")
@@ -141,10 +148,16 @@ def positions():
 def history():
     with database.connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM trade_history WHERE wallet = ? ORDER BY closed_at DESC LIMIT 500",
-            (g.wallet,),
+            """
+            SELECT rowid AS ledger_sequence, * FROM trade_orders
+            WHERE wallet = ?
+            ORDER BY created_at ASC
+            LIMIT 500
+            """,
+            (g.wallet.lower(),),
         ).fetchall()
-    return jsonify({"available": True, "items": [dict(row) for row in rows]})
+    ledger = build_wallet_ledger([dict(row) for row in rows])
+    return jsonify({"available": True, "items": ledger["history"]})
 
 
 @app.get(f"{API_PREFIX}/performance")
@@ -159,23 +172,11 @@ def performance():
         since = int(time.time()) - int(period[:-1]) * 86400
     with database.connection() as conn:
         rows = conn.execute(
-            """
-            SELECT pnl FROM trade_history
-            WHERE wallet = ? AND closed_at >= ?
-            """,
-            (g.wallet, since),
+            "SELECT rowid AS ledger_sequence, * FROM trade_orders WHERE wallet = ? ORDER BY created_at ASC, rowid ASC LIMIT 5000",
+            (g.wallet.lower(),),
         ).fetchall()
-    if not rows:
-        return jsonify({"available": False, "reason": "No verified closed trades in this period.", "trades": 0, "netPnl": None, "winRate": None})
-    values = [float(row["pnl"]) for row in rows]
-    return jsonify(
-        {
-            "available": True,
-            "trades": len(values),
-            "netPnl": sum(values),
-            "winRate": sum(value > 0 for value in values) / len(values) * 100,
-        }
-    )
+    ledger = build_wallet_ledger([dict(row) for row in rows])
+    return jsonify(performance_summary(ledger["history"], since))
 
 
 @app.post(f"{API_PREFIX}/verify")
@@ -419,7 +420,7 @@ def trade_execute():
             """
             UPDATE trade_orders
             SET exchange_order_id = ?, status = ?, executed_base_qty = ?,
-                executed_quote_qty = ?, updated_at = ?
+                executed_quote_qty = ?, fills_json = ?, updated_at = ?
             WHERE quote_id = ?
             """,
             (
@@ -427,6 +428,7 @@ def trade_execute():
                 result["status"],
                 result["executedBaseQty"],
                 result["executedQuoteQty"],
+                json.dumps(result.get("fills", []), separators=(",", ":")),
                 int(time.time()),
                 quote_id,
             ),

@@ -118,6 +118,7 @@ def initialize() -> None:
                 status TEXT NOT NULL,
                 executed_base_qty TEXT,
                 executed_quote_qty TEXT,
+                fills_json TEXT,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             );
@@ -125,3 +126,8 @@ def initialize() -> None:
                 ON trade_orders(wallet, created_at DESC);
             """
         )
+        order_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(trade_orders)")
+        }
+        if "fills_json" not in order_columns:
+            conn.execute("ALTER TABLE trade_orders ADD COLUMN fills_json TEXT")

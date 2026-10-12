@@ -75,7 +75,19 @@ function formatAmount(value: string, maximumFractionDigits = 8) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(numeric);
 }
 
-export function TradePanel({ symbol, wallet, signalRequest }: { symbol: TerminalSymbol; wallet: WalletSession; signalRequest: SignalRequest }) {
+export function TradePanel({
+  symbol,
+  wallet,
+  signalRequest,
+  onSessionTokenChange,
+  onOrdersChanged,
+}: {
+  symbol: TerminalSymbol;
+  wallet: WalletSession;
+  signalRequest: SignalRequest;
+  onSessionTokenChange: (token: string | null) => void;
+  onOrdersChanged: () => void;
+}) {
   const [health, setHealth] = useState<ApiHealth | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -111,6 +123,7 @@ export function TradePanel({ symbol, wallet, signalRequest }: { symbol: Terminal
 
   useEffect(() => {
     setToken(null);
+    onSessionTokenChange(null);
     setQuote(null);
     setOrders([]);
     setMessage(null);
@@ -172,6 +185,7 @@ export function TradePanel({ symbol, wallet, signalRequest }: { symbol: Terminal
         body: { wallet: wallet.address, signature },
       });
       setToken(session.token);
+      onSessionTokenChange(session.token);
       await loadOrders(session.token);
     } catch (error) {
       setMessage({
@@ -222,6 +236,7 @@ export function TradePanel({ symbol, wallet, signalRequest }: { symbol: Terminal
         text: `${result.status} · ${result.symbol} ${result.side} · ${formatAmount(result.executedBaseQty)} ${approvedQuote.baseAsset} for ${formatAmount(result.executedQuoteQty)} USDT · Testnet order ${result.exchangeOrderId}`,
       });
       await loadOrders(token);
+      onOrdersChanged();
     } catch (error) {
       setMessage({
         kind: 'error',
@@ -230,6 +245,7 @@ export function TradePanel({ symbol, wallet, signalRequest }: { symbol: Terminal
           : 'Order result is uncertain. Check the shared Testnet account before placing another order.',
       });
       await loadOrders(token);
+      onOrdersChanged();
     } finally {
       setWorking(false);
     }

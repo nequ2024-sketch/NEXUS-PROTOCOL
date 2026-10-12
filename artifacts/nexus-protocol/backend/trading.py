@@ -195,7 +195,7 @@ def build_order_quote(symbol: Any, side: Any, raw_amount: Any) -> dict[str, str]
 
 def submit_confirmed_market_order(
     quote: dict[str, Any], client_order_id: str
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Submit one MARKET order to the hard-coded Spot Testnet endpoint."""
     api_key, api_secret = _require_ready()
     params: list[tuple[str, str]] = [
@@ -257,10 +257,23 @@ def submit_confirmed_market_order(
             502,
         )
 
+    raw_fills = body.get("fills")
+    fills = [
+        {
+            "price": str(fill.get("price", "")),
+            "qty": str(fill.get("qty", "")),
+            "commission": str(fill.get("commission", "")),
+            "commissionAsset": str(fill.get("commissionAsset", "")),
+        }
+        for fill in raw_fills
+        if isinstance(fill, dict)
+    ] if isinstance(raw_fills, list) else []
+
     return {
         "exchangeOrderId": str(body.get("orderId", "")),
         "clientOrderId": str(body.get("clientOrderId", client_order_id)),
         "status": str(body.get("status", "UNKNOWN")),
         "executedBaseQty": str(body.get("executedQty", "0")),
         "executedQuoteQty": str(body.get("cummulativeQuoteQty", "0")),
+        "fills": fills,
     }

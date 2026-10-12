@@ -92,6 +92,14 @@ class BackendTradingTests(unittest.TestCase):
                         "status": "FILLED",
                         "executedQty": "0.00010",
                         "cummulativeQuoteQty": "10.00",
+                        "fills": [
+                            {
+                                "price": "100000",
+                                "qty": "0.00010",
+                                "commission": "0.00000010",
+                                "commissionAsset": "BTC",
+                            }
+                        ],
                     }
                 ),
             ) as post,
@@ -143,6 +151,58 @@ class BackendTradingTests(unittest.TestCase):
             self.assertEqual(history.status_code, 200)
             self.assertEqual(len(history.get_json()["items"]), 1)
             self.assertEqual(history.get_json()["items"][0]["status"], "FILLED")
+            positions = self.client.get("/api/positions", headers=self.headers)
+            self.assertEqual(positions.status_code, 200)
+            self.assertEqual(positions.get_json()["items"][0]["symbol"], "BTCUSDT")
+            self.assertAlmostEqual(positions.get_json()["items"][0]["quantity"], 0.0000999)
+            self.assertTrue(positions.get_json()["items"][0]["pnl_known"])
+
+    def test_history_and_performance_are_wallet_scoped_and_report_unknown_fee_values(self):
+        market_responses = testnet_market_responses()
+        filled_buy = {
+            "symbol": "BTCUSDT",
+            "orderId": 902,
+            "status": "FILLED",
+            "executedQty": "0.00010",
+            "cummulativeQuoteQty": "10.00",
+            "fills": [
+                {
+                    "price": "100000",
+                    "qty": "0.00010",
+                    "commission": "0.00001",
+                    "commissionAsset": "BNB",
+                }
+            ],
+        }
+        with (
+            patch("backend.app.TESTNET_TRADING_READY", True),
+            patch("backend.trading.config.TESTNET_TRADING_READY", True),
+            patch("backend.trading.config.BINANCE_API_KEY", "testnet-key"),
+            patch("backend.trading.config.BINANCE_API_SECRET", "testnet-secret"),
+            patch("backend.trading.requests.get", side_effect=market_responses),
+            patch("backend.trading.requests.post", return_value=FakeResponse(filled_buy)),
+        ):
+            quote = self.client.post(
+                "/api/trade/quote",
+                headers=self.headers,
+                json={"symbol": "BTCUSDT", "side": "BUY", "amount": "10"},
+            ).get_json()
+            self.assertEqual(
+                self.client.post(
+                    "/api/trade/execute",
+                    headers=self.headers,
+                    json={"quoteId": quote["quoteId"], "confirmed": True},
+                ).status_code,
+                200,
+            )
+        rows = self.client.get("/api/history", headers=self.headers).get_json()["items"]
+        self.assertEqual(len(rows), 1)
+        self.assertFalse(rows[0]["pnl_known"])
+        self.assertEqual(rows[0]["fees"], [{"asset": "BNB", "amount": 0.00001}])
+        performance = self.client.get(
+            "/api/performance?period=all", headers=self.headers
+        ).get_json()
+        self.assertFalse(performance["available"])
 
     def test_order_preview_rejects_pairs_not_listed_for_testnet(self):
         with (

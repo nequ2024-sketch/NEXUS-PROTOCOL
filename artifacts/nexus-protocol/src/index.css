@@ -814,6 +814,25 @@ h1 { margin:10px 0 0; color:#edf6f2; font-size:clamp(31px,4vw,48px); line-height
 .terminal-disclosure a svg {width:10px;height:10px}
 .terminal-bsc-boundary {margin-left:auto;white-space:nowrap;color:#968d66}
 .terminal-bsc-boundary svg {width:11px;height:11px;vertical-align:middle;color:#ffd700}
+.terminal-ledger-actions {display:flex;align-items:center;gap:8px}
+.terminal-ledger-actions button {display:grid;place-items:center;width:26px;height:24px;border:1px solid rgba(145,163,154,.15);border-radius:3px;background:transparent;color:#00dff2;cursor:pointer}
+.terminal-ledger-actions button:disabled {opacity:.5;cursor:wait}
+.terminal-ledger-actions svg {width:12px;height:12px}
+.terminal-ledger-loading {min-height:100px;display:grid;place-items:center;color:#00dff2;font:8px 'DM Mono',monospace;letter-spacing:.1em}
+.terminal-ledger-table {width:100%;overflow:auto}
+.terminal-ledger-row {min-width:520px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid rgba(148,168,162,.08);color:#899790;font:8px 'DM Mono',monospace}
+.terminal-ledger-row > :last-child {text-align:right}
+.terminal-ledger-row b {color:#bdc8c2;font-weight:500}
+.terminal-ledger-header {color:#5d6963;font-size:7px;letter-spacing:.1em}
+.terminal-performance-summary {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:13px}
+.terminal-performance-summary > div:not(.terminal-no-records) {display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid rgba(148,168,162,.1);background:rgba(9,14,18,.6)}
+.terminal-performance-summary > div span {color:#697670;font:7px 'DM Mono',monospace;letter-spacing:.06em}
+.terminal-performance-summary > div b {color:#d4ded8;font:14px 'DM Mono',monospace;font-weight:500}
+.terminal-performance-summary > p {grid-column:1/-1;margin:2px 0 0;color:#66736d;font-size:8px;line-height:1.5}
+.terminal-ledger-row .positive {color:var(--term-green)}
+.terminal-ledger-row .negative {color:#fb6681}
+@keyframes terminalRefresh {to{transform:rotate(360deg)}}
+.terminal-ledger-actions svg.spinning {animation:terminalRefresh .8s linear infinite}
 @keyframes termPulse {to{opacity:.42}}
 @media(max-width:1100px) {
  .terminal-head {gap:12px;flex-wrap:wrap}.terminal-head-metrics{gap:12px}.terminal-brand{min-width:155px}
@@ -838,6 +857,8 @@ h1 { margin:10px 0 0; color:#edf6f2; font-size:clamp(31px,4vw,48px); line-height
  .terminal-bsc-boundary{margin-left:0}
  .terminal-statusbar{align-items:flex-start;flex-direction:column;padding:9px}.terminal-status-cluster{justify-content:space-between;width:100%;gap:8px;flex-wrap:wrap}
  .terminal-status-item{font-size:7px}.bottom-dock-head{padding:0 5px}.terminal-bottom-tabs button{padding:11px 8px}
+  .terminal-market-note{font-size:6px}.terminal-performance-summary{grid-template-columns:repeat(2,minmax(0,1fr));padding:9px}
+  .terminal-ledger-row{padding:8px 9px}.terminal-ledger-header{font-size:6px}
 }
 @media(max-width:390px) {
  .terminal-head-metrics{gap:7px}.terminal-head-metrics span{letter-spacing:.05em}

@@ -8,7 +8,7 @@
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:backend": "python -m unittest discover -s test -p 'test_backend_*.py'",
+    "test:backend": "python -m unittest discover -s test -p 'test_*.py'",
     "compile:contracts": "hardhat compile --config hardhat.config.cjs",
     "test:contracts": "hardhat test --config hardhat.config.cjs",
     "deploy:testnet": "hardhat run scripts/deploy.js --network bscTestnet --config hardhat.config.cjs",

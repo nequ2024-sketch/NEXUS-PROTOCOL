@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Activity, ArrowDownRight, ArrowUpRight, CircleAlert, ExternalLink, RefreshCw, Search, Wifi, WifiOff } from 'lucide-react';
 import { ChartPanel } from '@/components/terminal/chart-panel';
@@ -217,19 +217,134 @@ function NoRecords({ title, detail }: { title: string; detail: string }) {
   return <div className="terminal-no-records"><div className="terminal-empty-mark"><CircleAlert /></div><strong>{title}</strong><p>{detail}</p></div>;
 }
 
-function BottomDock({ active, onChange }: { active: BottomTab; onChange: (tab: BottomTab) => void }) {
+type LedgerPosition = {
+  symbol: string;
+  side: string;
+  entry: number | null;
+  quantity: number;
+  size_usd: number;
+  pnl_known: boolean;
+  opened_at: number;
+  status: string;
+};
+type LedgerTrade = {
+  quote_id: string;
+  symbol: string;
+  side: string;
+  status: string;
+  quantity: number;
+  entry: number | null;
+  exit: number | null;
+  pnl: number | null;
+  pnl_known: boolean;
+  fees: { asset: string; amount: number }[];
+  created_at: number;
+  closed_at: number;
+  reason: string;
+};
+type PerformanceSummary = {
+  available: boolean;
+  reason?: string;
+  trades: number;
+  incompleteTrades: number;
+  netPnl: number | null;
+  winRate: number | null;
+  averagePnl?: number;
+};
+
+function apiRoot() {
+  return '/nexus-api/api';
+}
+
+async function getLedgerData<T>(path: string, token: string): Promise<T> {
+  const response = await fetch(`${apiRoot()}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `API returned HTTP ${response.status}.`);
+  return data as T;
+}
+
+function usd(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  return `${value >= 0 ? '+' : '−'}$${Math.abs(value).toFixed(2)}`;
+}
+
+function BottomDock({
+  active,
+  onChange,
+  token,
+  refreshKey,
+}: {
+  active: BottomTab;
+  onChange: (tab: BottomTab) => void;
+  token: string | null;
+  refreshKey: number;
+}) {
   const tabs: { id: BottomTab; label: string }[] = [{ id: 'positions', label: 'POSITIONS' }, { id: 'history', label: 'HISTORY' }, { id: 'performance', label: 'PERFORMANCE' }];
+  const [positions, setPositions] = useState<LedgerPosition[]>([]);
+  const [history, setHistory] = useState<LedgerTrade[]>([]);
+  const [performance, setPerformance] = useState<PerformanceSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    setPositions([]);
+    setHistory([]);
+    setPerformance(null);
+    setError(null);
+    if (!token) return;
+    let current = true;
+    setLoading(true);
+    Promise.all([
+      getLedgerData<{ items: LedgerPosition[] }>('/positions', token),
+      getLedgerData<{ items: LedgerTrade[] }>('/history', token),
+      getLedgerData<PerformanceSummary>('/performance?period=30d', token),
+    ]).then(([positionData, historyData, performanceData]) => {
+      if (!current) return;
+      setPositions(positionData.items);
+      setHistory(historyData.items);
+      setPerformance(performanceData);
+      setError(null);
+    }).catch((loadError: unknown) => {
+      if (current) setError(loadError instanceof Error ? loadError.message : 'Could not load this wallet ledger.');
+    }).finally(() => {
+      if (current) setLoading(false);
+    });
+    return () => { current = false; };
+  }, [token, refreshKey, reload]);
+
   return <section className="terminal-panel bottom-dock">
     <div className="bottom-dock-head">
       <div className="terminal-bottom-tabs" role="tablist" aria-label="Trading records">
         {tabs.map(({ id, label }) => <button key={id} className={active === id ? 'selected' : ''} role="tab" aria-selected={active === id} aria-controls={`terminal-tab-${id}`} onClick={() => onChange(id)} data-testid={`tab-terminal-${id}`}>{label}</button>)}
       </div>
-      <span className="terminal-market-note">ACCOUNT DATA NOT CONNECTED</span>
+      <div className="terminal-ledger-actions">
+        <span className="terminal-market-note">{token ? 'WALLET-SCOPED TESTNET LEDGER' : 'SIGN IN TO VIEW LEDGER'}</span>
+        {token && <button type="button" onClick={() => setReload((value) => value + 1)} aria-label="Refresh wallet trading records" disabled={loading}><RefreshCw className={loading ? 'spinning' : ''} /></button>}
+      </div>
     </div>
     <div id={`terminal-tab-${active}`} role="tabpanel" className="terminal-tab-panel">
-      {active === 'positions' && <NoRecords title="No connected position source" detail="This app has no persisted trading positions or server-side testnet execution service. No open positions are assumed." />}
-      {active === 'history' && <NoRecords title="Trade history unavailable" detail="No persisted trade history exists. Export is unavailable until a real history source is configured." />}
-      {active === 'performance' && <NoRecords title="Performance data unavailable" detail="Win rate, P&L, drawdown and equity history require real persisted trading records; none are available." />}
+      {!token ? <NoRecords title="Wallet sign-in required" detail="Connect and sign in from the order panel to see fills recorded by this app for your wallet." /> :
+        error ? <NoRecords title="Could not load Testnet records" detail={error} /> :
+          loading && performance === null ? <div className="terminal-ledger-loading">LOADING RECORDED TESTNET DATA…</div> :
+            active === 'positions' ? positions.length === 0
+              ? <NoRecords title="No app-recorded open positions" detail="This is only this wallet’s fills recorded by NEXUS. It does not represent the full shared Binance account balance or trades made elsewhere." />
+              : <div className="terminal-ledger-table"><div className="terminal-ledger-row terminal-ledger-header"><span>PAIR</span><span>QTY</span><span>AVG. ENTRY</span><span>RECORDED COST</span></div>{positions.map((item) => <div className="terminal-ledger-row" key={item.symbol}><b>{item.symbol}</b><span>{item.quantity.toPrecision(6)}</span><span>{item.entry === null ? '—' : `$${item.entry.toFixed(4)}`}</span><span>{item.pnl_known ? `$${item.size_usd.toFixed(2)}` : 'INCOMPLETE'}</span></div>)}</div> :
+              active === 'history' ? history.length === 0
+                ? <NoRecords title="No orders recorded yet" detail="Confirmed orders will appear here with the fills returned by Binance Spot Testnet. Orders made outside NEXUS are not included." />
+                : <div className="terminal-ledger-table"><div className="terminal-ledger-row terminal-ledger-header"><span>PAIR / SIDE</span><span>STATUS</span><span>PRICE</span><span>REALIZED P&amp;L</span></div>{history.slice(0, 20).map((item) => <div className="terminal-ledger-row" key={item.quote_id}><b>{item.side} {item.symbol}</b><span>{item.status}</span><span>{item.exit === null ? '—' : `$${item.exit.toFixed(4)}`}</span><span className={item.pnl_known && item.pnl !== null ? item.pnl >= 0 ? 'positive' : 'negative' : ''}>{item.pnl_known ? usd(item.pnl) : item.side === 'SELL' ? 'UNVERIFIED' : '—'}</span></div>)}</div> :
+                <div className="terminal-performance-summary">
+                  {performance?.available ? <>
+                    <div><span>NET REALIZED P&amp;L · 30D</span><b className={performance.netPnl !== null && performance.netPnl >= 0 ? 'positive' : 'negative'}>{usd(performance.netPnl)}</b></div>
+                    <div><span>VERIFIED CLOSED TRADES</span><b>{performance.trades}</b></div>
+                    <div><span>WIN RATE · VERIFIED ONLY</span><b>{performance.winRate?.toFixed(1)}%</b></div>
+                    <div><span>INCOMPLETE P&amp;L</span><b>{performance.incompleteTrades}</b></div>
+                  </> : <NoRecords title="No verified realized P&amp;L yet" detail={`${performance?.reason || 'Performance is not available.'} Fees paid in assets without a reliable USDT value are excluded.`} />}
+                  <p>Realized P&amp;L only. No unrealized P&amp;L, full-account equity, drawdown, or external trades are included.</p>
+                </div>}
     </div>
   </section>;
 }
@@ -255,6 +370,8 @@ export function TerminalPage({ wallet }: { wallet: TerminalWallet }) {
   const [symbol, setSymbol] = useState<TerminalSymbol>(DEFAULT_TERMINAL_SYMBOL);
   const [timeframe, setTimeframe] = useState<TerminalTimeframe>('1h');
   const [activeTab, setActiveTab] = useState<BottomTab>('positions');
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [ledgerRefreshKey, setLedgerRefreshKey] = useState(0);
   const [signalRequest, setSignalRequest] = useState<SignalRequest | null>(null);
   const signalRequestId = useRef(0);
   const allMarkets = useBinanceMarkets();
@@ -290,9 +407,15 @@ export function TerminalPage({ wallet }: { wallet: TerminalWallet }) {
         <ChartPanel candles={market.candles} symbol={symbol} timeframe={timeframe} loading={market.candleLoading} error={market.candleError} onRetry={market.retryCandles} />
         <SignalFeed candles={market.candles} symbol={symbol} timeframe={timeframe} loading={market.candleLoading} error={market.candleError} onUseSide={useSignalSide} />
       </div>
-      <TradePanel symbol={symbol} wallet={wallet} signalRequest={signalRequest} />
+      <TradePanel
+        symbol={symbol}
+        wallet={wallet}
+        signalRequest={signalRequest}
+        onSessionTokenChange={setSessionToken}
+        onOrdersChanged={() => setLedgerRefreshKey((value) => value + 1)}
+      />
     </div>
-    <BottomDock active={activeTab} onChange={setActiveTab} />
+    <BottomDock active={activeTab} onChange={setActiveTab} token={sessionToken} refreshKey={ledgerRefreshKey} />
     <ConnectionFooter streamStatus={market.streamStatus} updatedAt={market.updatedAt} reconnect={market.reconnect} />
     <div className="terminal-disclosure"><Wifi /><span>Binance market feed is public exchange data. NEXUS on-chain signals, wallet balances and subscription state remain unavailable until verified testnet contracts are deployed.</span><Link href="/signals">SIGNALS REGISTRY <ArrowDownRight /></Link><Link href="/presale">PROTOCOL STATUS <ExternalLink /></Link><span className="terminal-bsc-boundary"><WifiOff /> BSC TESTNET ONLY · NO MAINNET ACTIONS</span></div>
   </div>;
