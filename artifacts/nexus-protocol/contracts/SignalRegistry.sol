@@ -32,7 +32,7 @@ contract SignalRegistry is Ownable {
         _;
     }
 
-    constructor() Ownable(msg.sender) {}
+    constructor() Ownable() {}
 
     function authorizePublisher(address publisher, bool authorized) external onlyOwner {
         require(publisher != address(0), "SignalRegistry: zero publisher");

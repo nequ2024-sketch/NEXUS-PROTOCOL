@@ -21,7 +21,7 @@ contract NexusToken is ERC20, ERC20Burnable, Ownable {
     event FeesUpdated(uint256 burnFee, uint256 treasuryFee);
     event FeeExclusionUpdated(address indexed account, bool excluded);
 
-    constructor(address treasury_) ERC20("Nexus Protocol", "NEXUS") Ownable(msg.sender) {
+    constructor(address treasury_) ERC20("Nexus Protocol", "NEXUS") Ownable() {
         require(treasury_ != address(0), "NexusToken: zero treasury");
         treasury = treasury_;
         isExcludedFromFee[msg.sender] = true;
@@ -43,15 +43,13 @@ contract NexusToken is ERC20, ERC20Burnable, Ownable {
         emit FeeExclusionUpdated(account, excluded);
     }
 
-    function _update(address from, address to, uint256 value) internal override {
+    function _transfer(address from, address to, uint256 value) internal override {
         if (
-            from == address(0) ||
-            to == address(0) ||
             isExcludedFromFee[from] ||
             isExcludedFromFee[to] ||
             (burnFee == 0 && treasuryFee == 0)
         ) {
-            super._update(from, to, value);
+            super._transfer(from, to, value);
             return;
         }
 
@@ -59,8 +57,8 @@ contract NexusToken is ERC20, ERC20Burnable, Ownable {
         uint256 treasuryAmount = (value * treasuryFee) / BPS_DENOMINATOR;
         uint256 recipientAmount = value - burnAmount - treasuryAmount;
 
-        super._update(from, to, recipientAmount);
-        if (burnAmount > 0) super._update(from, address(0), burnAmount);
-        if (treasuryAmount > 0) super._update(from, treasury, treasuryAmount);
+        super._transfer(from, to, recipientAmount);
+        if (burnAmount > 0) _burn(from, burnAmount);
+        if (treasuryAmount > 0) super._transfer(from, treasury, treasuryAmount);
     }
 }

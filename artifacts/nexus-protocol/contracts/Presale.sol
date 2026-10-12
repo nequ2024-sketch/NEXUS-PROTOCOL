@@ -35,7 +35,7 @@ contract Presale is Ownable, ReentrancyGuard {
         uint256 minPurchase_,
         uint256 start_,
         uint256 duration_
-    ) Ownable(msg.sender) {
+    ) Ownable() {
         require(nexus_ != address(0) && payment_ != address(0), "Presale: zero token");
         require(rate_ > 0 && hardCap_ > 0 && minPurchase_ > 0, "Presale: zero sale setting");
         require(duration_ > 0 && start_ >= block.timestamp, "Presale: invalid schedule");
