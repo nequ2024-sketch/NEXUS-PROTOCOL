@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'wouter';
 import { Activity, ArrowDownRight, ArrowUpRight, CircleAlert, ExternalLink, RefreshCw, Search, Wifi, WifiOff } from 'lucide-react';
 import { ChartPanel } from '@/components/terminal/chart-panel';
 import { TradePanel } from '@/components/terminal/trade-panel';
-import { DEFAULT_TERMINAL_SYMBOL, TERMINAL_TIMEFRAMES, useBinanceMarket, useBinanceMarkets, type BookLevel, type SpotMarket, type TerminalSymbol, type TerminalTimeframe } from '@/hooks/use-binance-market';
+import { DEFAULT_TERMINAL_SYMBOL, TERMINAL_TIMEFRAMES, useBinanceMarket, useBinanceMarkets, type BookLevel, type Candle, type SpotMarket, type TerminalSymbol, type TerminalTimeframe } from '@/hooks/use-binance-market';
 import { TESTNET_CHAIN_ID } from '@/lib/contracts';
 
 type BottomTab = 'positions' | 'history' | 'performance';
@@ -118,11 +118,98 @@ function MarketOverview({
   </section>;
 }
 
-function SignalFeed() {
+type SignalSide = 'BUY' | 'SELL';
+type SignalRequest = { side: SignalSide; requestId: number };
+
+function SignalFeed({
+  candles,
+  symbol,
+  timeframe,
+  loading,
+  error,
+  onUseSide,
+}: {
+  candles: Candle[];
+  symbol: TerminalSymbol;
+  timeframe: TerminalTimeframe;
+  loading: boolean;
+  error: string | null;
+  onUseSide: (side: SignalSide) => void;
+}) {
+  const snapshot = useMemo(() => {
+    if (loading || error) return null;
+    const timeframeSeconds: Record<TerminalTimeframe, number> = {
+      '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400,
+    };
+    const nowSeconds = Date.now() / 1000;
+    const closed = candles.filter((candle) =>
+      candle.time + timeframeSeconds[timeframe] <= nowSeconds &&
+      Number.isFinite(candle.close) &&
+      candle.close > 0,
+    );
+    if (closed.length < 35) return null;
+
+    const closes = closed.map((candle) => candle.close);
+    const period = 14;
+    let averageGain = 0;
+    let averageLoss = 0;
+    for (let index = 1; index <= period; index += 1) {
+      const change = closes[index] - closes[index - 1];
+      if (change > 0) averageGain += change;
+      else averageLoss -= change;
+    }
+    averageGain /= period;
+    averageLoss /= period;
+    for (let index = period + 1; index < closes.length; index += 1) {
+      const change = closes[index] - closes[index - 1];
+      averageGain = (averageGain * (period - 1) + Math.max(change, 0)) / period;
+      averageLoss = (averageLoss * (period - 1) + Math.max(-change, 0)) / period;
+    }
+    const rsi = averageLoss === 0
+      ? (averageGain === 0 ? 50 : 100)
+      : 100 - 100 / (1 + averageGain / averageLoss);
+
+    const emaPeriod = 20;
+    const alpha = 2 / (emaPeriod + 1);
+    let ema = closes.slice(0, emaPeriod).reduce((sum, value) => sum + value, 0) / emaPeriod;
+    for (let index = emaPeriod; index < closes.length; index += 1) {
+      ema = closes[index] * alpha + ema * (1 - alpha);
+    }
+    const close = closes[closes.length - 1];
+    const side: SignalSide | 'HOLD' = rsi < 30 && close > ema
+      ? 'BUY'
+      : rsi > 70 && close < ema
+        ? 'SELL'
+        : 'HOLD';
+    return { side, rsi, ema, close, candleTime: closed[closed.length - 1].time };
+  }, [candles, error, loading, timeframe]);
+
+  const state = loading ? 'loading' : error ? 'unavailable' : snapshot ? snapshot.side.toLowerCase() : 'waiting';
+  const label = loading
+    ? 'LOADING PUBLIC CANDLES'
+    : error
+      ? 'MARKET DATA UNAVAILABLE'
+      : snapshot
+        ? `${snapshot.side} · RSI 14 / EMA 20`
+        : 'WAITING FOR 35 CLOSED CANDLES';
   return <section className="terminal-panel signal-panel">
-    <div className="terminal-panel-head"><div><div className="terminal-panel-label">ON-CHAIN SIGNALS</div><div className="terminal-symbol-caption">PUBLISHED FEED</div></div><span className="terminal-tag purple-tag">BSC TESTNET</span></div>
-    <div className="terminal-empty-inline"><div className="terminal-empty-mark"><Activity /></div><div><strong>Signal registry unavailable</strong><p>No verified signal contract address is configured. No signal history or market event is being fabricated.</p></div></div>
-    <div className="signal-footnote"><CircleAlert /> A BscScan link will appear only for a real transaction hash, on BSC Testnet.</div>
+    <div className="terminal-panel-head"><div><div className="terminal-panel-label">TECHNICAL SIGNAL PREVIEW</div><div className="terminal-symbol-caption">{symbol} · {timeframe.toUpperCase()} · RSI 14 + EMA 20</div></div><span className="terminal-tag purple-tag">RULE-BASED · TEST ONLY</span></div>
+    <div className={`technical-signal-card ${state}`}>
+      <div className="technical-signal-main">
+        <div className="terminal-empty-mark"><Activity /></div>
+        <div><span className="technical-signal-label">CURRENT RULE OUTPUT</span><strong>{label}</strong></div>
+      </div>
+      {snapshot && <div className="technical-signal-metrics">
+        <div><span>RSI · 14</span><b>{snapshot.rsi.toFixed(1)}</b></div>
+        <div><span>EMA · 20</span><b>{formatPrice(snapshot.ema, symbol)}</b></div>
+        <div><span>CLOSED PRICE</span><b>{formatPrice(snapshot.close, symbol)}</b></div>
+        <div><span>BAR TIME</span><b>{new Date(snapshot.candleTime * 1000).toLocaleTimeString()}</b></div>
+      </div>}
+      {snapshot && (snapshot.side === 'BUY' || snapshot.side === 'SELL') && <button className="signal-use-side" type="button" onClick={() => onUseSide(snapshot.side as SignalSide)}>
+        SET {snapshot.side} IN ORDER PANEL
+      </button>}
+    </div>
+    <div className="signal-footnote"><CircleAlert /> This is a simple RSI/EMA rule on public Binance data, not an AI prediction or a tested-profit claim. It never submits an order; selecting BUY/SELL only sets the side in the order panel. Every order still needs a fresh quote and your confirmation.</div>
   </section>;
 }
 
@@ -168,10 +255,16 @@ export function TerminalPage({ wallet }: { wallet: TerminalWallet }) {
   const [symbol, setSymbol] = useState<TerminalSymbol>(DEFAULT_TERMINAL_SYMBOL);
   const [timeframe, setTimeframe] = useState<TerminalTimeframe>('1h');
   const [activeTab, setActiveTab] = useState<BottomTab>('positions');
+  const [signalRequest, setSignalRequest] = useState<SignalRequest | null>(null);
+  const signalRequestId = useRef(0);
   const allMarkets = useBinanceMarkets();
   const market = useBinanceMarket(symbol, timeframe);
   const marketStatus = market.streamStatus === 'live' ? 'LIVE MARKET' : market.streamStatus.toUpperCase();
   const changeUp = market.priceChange !== null && market.priceChange >= 0;
+  const useSignalSide = (side: SignalSide) => {
+    signalRequestId.current += 1;
+    setSignalRequest({ side, requestId: signalRequestId.current });
+  };
   return <div className="terminal-page">
     <header className="terminal-head">
       <div className="terminal-brand"><span className="terminal-mark">N</span><div><strong>NEXUS TERMINAL</strong><small>PUBLIC DATA / TESTNET ORDERS</small></div></div>
@@ -195,9 +288,9 @@ export function TerminalPage({ wallet }: { wallet: TerminalWallet }) {
       <OrderBook symbol={symbol} price={market.lastPrice} bids={market.bids} asks={market.asks} streamStatus={market.streamStatus} />
       <div className="terminal-center-column">
         <ChartPanel candles={market.candles} symbol={symbol} timeframe={timeframe} loading={market.candleLoading} error={market.candleError} onRetry={market.retryCandles} />
-        <SignalFeed />
+        <SignalFeed candles={market.candles} symbol={symbol} timeframe={timeframe} loading={market.candleLoading} error={market.candleError} onUseSide={useSignalSide} />
       </div>
-      <TradePanel symbol={symbol} wallet={wallet} />
+      <TradePanel symbol={symbol} wallet={wallet} signalRequest={signalRequest} />
     </div>
     <BottomDock active={activeTab} onChange={setActiveTab} />
     <ConnectionFooter streamStatus={market.streamStatus} updatedAt={market.updatedAt} reconnect={market.reconnect} />

@@ -721,6 +721,21 @@ h1 { margin:10px 0 0; color:#edf6f2; font-size:clamp(31px,4vw,48px); line-height
 .terminal-empty-inline p {font-size:9px;line-height:1.5;color:#738078;margin:5px 0 0;max-width:440px}
 .signal-footnote {display:flex;align-items:flex-start;gap:7px;padding:9px 12px;border-top:1px solid rgba(147,169,161,.1);color:#a195ba;font:8px 'DM Mono',monospace;line-height:1.5}
 .signal-footnote svg {width:12px;height:12px;flex:0 0 auto;color:#ff4de6}
+.technical-signal-card {margin:0 12px 10px;padding:10px;border:1px solid rgba(147,169,161,.12);border-radius:4px;background:rgba(7,12,15,.72)}
+.technical-signal-card.buy {border-color:rgba(70,222,171,.24);background:rgba(70,222,171,.035)}
+.technical-signal-card.sell {border-color:rgba(255,79,116,.24);background:rgba(255,79,116,.035)}
+.technical-signal-main {display:flex;align-items:center;gap:10px}
+.technical-signal-main .terminal-empty-mark {margin:0;width:31px;height:31px;flex:0 0 auto}
+.technical-signal-main > div:last-child {display:grid;gap:4px}
+.technical-signal-label {color:#788883;font:7px 'DM Mono',monospace;letter-spacing:.09em}
+.technical-signal-main strong {color:#c6d6d1;font:10px 'DM Mono',monospace;font-weight:500}
+.technical-signal-card.buy .technical-signal-main strong {color:#62d9a5}
+.technical-signal-card.sell .technical-signal-main strong {color:#ff7589}
+.technical-signal-metrics {display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(147,169,161,.1)}
+.technical-signal-metrics > div {display:grid;gap:4px}
+.technical-signal-metrics span {color:#65756f;font:7px 'DM Mono',monospace}
+.technical-signal-metrics b {color:#c2d4cf;font:9px 'DM Mono',monospace;font-weight:500}
+.signal-use-side {width:100%;margin-top:10px;padding:8px;border:1px solid rgba(0,229,255,.28);border-radius:3px;background:rgba(0,229,255,.06);color:#8de8eb;font:8px 'DM Mono',monospace;cursor:pointer}
 .trade-disabled-panel {padding-bottom:12px}
 .terminal-side-switch {display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:11px 12px 0}
 .terminal-side-switch button {padding:9px;border:1px solid rgba(144,161,153,.12);border-radius:3px;background:rgba(150,160,155,.04);color:#59655f;font:9px 'DM Mono',monospace}

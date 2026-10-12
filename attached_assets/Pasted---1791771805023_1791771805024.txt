@@ -1,0 +1,323 @@
+تمام، فهمت طلبك بالكامل. تريد بناء نظام متكامل يعمل على موقعك، يتضمن روبوتات تداول ذكية تتخذ قراراتها بناءً على حركة السوق، مع لوحة تحكم تعرض لك كل التفاصيل: الأرصدة، الأرباح، الرسوم، وكل شيء.
+
+لتحقيق هذا، سنبني نظاماً من ثلاث طبقات رئيسية. سأشرح كل طبقة ثم أعطيك الأكواد.
+
+### 🏛️ معمارية النظام
+
+النظام يتكون من:
+
+1.  **الخلفية (Backend) - "دماغ" النظام**: هذا هو الجزء الذي يعمل على السيرفر (مثل Replit). يقوم بـ:
+    *   **جمع البيانات**: يتصل بـ Binance (أو أي منصة أخرى) لجلب أسعار السوق اللحظية، ويقرأ بيانات البلوكتشين (مثل أرصدة المحافظ، ورسوم الغاز).
+    *   **تشغيل الروبوتات**: يحتوي على كود البوتات (الاستراتيجيات) التي تحلل البيانات وتتخذ قرارات التداول.
+    *   **تنفيذ الأوامر**: يرسل أوامر الشراء والبيع إلى المنصة أو يتفاعل مع العقود الذكية.
+    *   **تتبع الأداء**: يحسب الأرباح والخسائر (PnL) والرسوم المدفوعة لكل صفقة.
+
+2.  **الواجهة الأمامية (Frontend) - "شاشة التحكم"**: هذه هي الصفحة التي تراها في المتصفح. تقوم بـ:
+    *   **ربط المحفظة**: تسمح لك بتوصيل محفظتك (MetaMask).
+    *   **عرض البيانات**: تطلب البيانات من الخلفية وتعرضها لك في جداول ورسوم بيانية (لوحة تحكم).
+    *   **إرسال الأوامر**: تسمح لك بتفعيل أو إيقاف الروبوتات يدوياً.
+
+3.  **العقود الذكية (Smart Contracts)**: (اختياري) إذا أردت أن تتم عمليات التداول والتحقق من الأرباح بشكل لامركزي بالكامل، يمكن للبوتات التفاعل مع عقود ذكية على BSC (مثل PancakeSwap) بدلاً من Binance التقليدية.
+
+---
+
+### 🤖 مكونات "دماغ" النظام (الخلفية)
+
+#### 1. متتبع السوق (Market Tracker)
+هذا الجزء مسؤول عن جلب بيانات السوق اللحظية. سنستخدم مكتبة `ccxt` للاتصال بـ Binance. يمكنك أيضاً استخدام خدمات أخرى مثل `DexScreener` لمراقبة أسواق العقود اللامركزية (DEX).
+
+```python
+# backend/market_tracker.py
+import ccxt
+import asyncio
+
+class MarketTracker:
+    def __init__(self, exchange_id='binance'):
+        # تفعيل تحديد المعدل لتجنب الحظر
+        self.exchange = getattr(ccxt, exchange_id)({
+            'enableRateLimit': True,
+        })
+        self.symbols = ['BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'NEXUS/USDT']
+
+    async def get_ticker(self, symbol):
+        """جلب أحدث سعر لرمز معين."""
+        try:
+            ticker = await self.exchange.fetch_ticker(symbol)
+            return {
+                'symbol': symbol,
+                'last': ticker['last'],
+                'bid': ticker['bid'],
+                'ask': ticker['ask'],
+                'volume': ticker['baseVolume'],
+                'change': ticker['percentage']
+            }
+        except Exception as e:
+            print(f"Error fetching {symbol}: {e}")
+            return None
+
+    async def get_order_book(self, symbol, limit=20):
+        """جلب دفتر الأوامر (العرض والطلب) لرمز معين."""
+        try:
+            order_book = await self.exchange.fetch_order_book(symbol, limit)
+            return order_book
+        except Exception as e:
+            print(f"Error fetching order book for {symbol}: {e}")
+            return None
+
+# مثال للاستخدام
+async def main():
+    tracker = MarketTracker()
+    ticker = await tracker.get_ticker('BTC/USDT')
+    print(ticker)
+
+if __name__ == '__main__':
+    asyncio.run(main())
+```
+
+#### 2. روبوت التداول (Trading Bot)
+هذا هو الكود الذي يحتوي على استراتيجية التداول. سأعطيك مثالاً لاستراتيجية "اختراق السعر" (Breakout) باستخدام مؤشر RSI. عند إشارة شراء، يرسل البوت أمراً إلى المنصة.
+
+```python
+# backend/trading_bot.py
+import ccxt
+import pandas as pd
+import ta
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class TradingBot:
+    def __init__(self, exchange_id='binance', symbol='BTC/USDT'):
+        self.exchange = getattr(ccxt, exchange_id)({
+            'apiKey': os.getenv('BINANCE_API_KEY'),
+            'secret': os.getenv('BINANCE_API_SECRET'),
+            'enableRateLimit': True,
+            'options': {'defaultType': 'spot'}
+        })
+        self.symbol = symbol
+        self.position = None # 'long', 'short', or None
+
+    async def analyze_market(self):
+        """تحليل السوق واتخاذ قرار."""
+        # 1. جلب البيانات التاريخية
+        ohlcv = await self.exchange.fetch_ohlcv(self.symbol, timeframe='5m', limit=100)
+        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+
+        # 2. حساب المؤشرات الفنية
+        df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=14).rsi()
+        df['ema20'] = ta.trend.EMAIndicator(df['close'], window=20).ema_indicator()
+        
+        last_close = df['close'].iloc[-1]
+        last_rsi = df['rsi'].iloc[-1]
+        last_ema = df['ema20'].iloc[-1]
+
+        # 3. اتخاذ القرار
+        if last_rsi < 30 and last_close > last_ema and self.position != 'long':
+            print(f"🟢 إشارة شراء لـ {self.symbol} عند {last_close}")
+            await self.execute_trade('buy')
+        elif last_rsi > 70 and last_close < last_ema and self.position != 'short':
+            print(f"🔴 إشارة بيع لـ {self.symbol} عند {last_close}")
+            await self.execute_trade('sell')
+
+    async def execute_trade(self, side):
+        """تنفيذ أمر التداول."""
+        try:
+            # جلب الرصيد
+            balance = await self.exchange.fetch_balance()
+            quote_balance = balance['free'].get('USDT', 0)
+            
+            if side == 'buy' and quote_balance > 10:
+                amount_to_trade = quote_balance * 0.1 # استخدام 10% من الرصيد
+                ticker = await self.exchange.fetch_ticker(self.symbol)
+                amount = amount_to_trade / ticker['last']
+                
+                order = await self.exchange.create_market_buy_order(self.symbol, amount)
+                print(f"✅ تم تنفيذ أمر شراء: {order}")
+                self.position = 'long'
+                return order
+
+            elif side == 'sell' and self.position == 'long':
+                # بيع الرصيد الحالي من العملة
+                base_currency = self.symbol.split('/')[0]
+                base_balance = balance['free'].get(base_currency, 0)
+                if base_balance > 0:
+                    order = await self.exchange.create_market_sell_order(self.symbol, base_balance)
+                    print(f"✅ تم تنفيذ أمر بيع: {order}")
+                    self.position = None
+                    return order
+        except Exception as e:
+            print(f"❌ فشل تنفيذ الأمر: {e}")
+            return None
+
+# مثال للتشغيل
+# async def main():
+#     bot = TradingBot()
+#     while True:
+#         await bot.analyze_market()
+#         await asyncio.sleep(60) # تحليل كل دقيقة
+```
+
+---
+
+### 📊 مكونات "شاشة التحكم" (الواجهة الأمامية)
+
+#### 1. ربط المحفظة (Wallet Connection)
+هذا الكود يستخدم `ethers.js` لربط MetaMask بموقعك. عندما يضغط المستخدم على زر "Connect Wallet"، يطلب الكود الإذن من MetaMask للوصول إلى عنوان المحفظة.
+
+```javascript
+// frontend/js/wallet.js
+const NEXUS_TOKEN_ADDRESS = "0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705"; // عنوان عقدك
+const NEXUS_TOKEN_ABI = [...]; // يجب لصق ABI هنا
+
+async function connectWallet() {
+    if (typeof window.ethereum !== 'undefined') {
+        try {
+            // طلب الاتصال بحسابات MetaMask
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            const account = accounts[0];
+            console.log('✅ تم الاتصال بالحساب:', account);
+            
+            // عرض عنوان المحفظة على الصفحة
+            document.getElementById('wallet-address').innerText = 
+                account.substring(0, 6) + '...' + account.substring(38);
+            
+            // جلب رصيد NEXUS
+            await getNexusBalance(account);
+            
+            return account;
+        } catch (error) {
+            console.error('❌ رفض المستخدم الاتصال:', error);
+            alert('يجب الموافقة على الاتصال لاستخدام التطبيق.');
+        }
+    } else {
+        alert('الرجاء تثبيت محفظة MetaMask!');
+    }
+}
+
+async function getNexusBalance(account) {
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const contract = new ethers.Contract(NEXUS_TOKEN_ADDRESS, NEXUS_TOKEN_ABI, provider);
+        
+        const balance = await contract.balanceOf(account);
+        const decimals = await contract.decimals();
+        const formattedBalance = ethers.formatUnits(balance, decimals);
+        
+        console.log(`💰 رصيد NEXUS: ${formattedBalance}`);
+        document.getElementById('nexus-balance').innerText = parseFloat(formattedBalance).toLocaleString() + ' NEXUS';
+        return formattedBalance;
+    } catch (error) {
+        console.error('❌ فشل جلب الرصيد:', error);
+    }
+}
+```
+
+#### 2. التحقق من ملكية المحفظة (Signature Authentication)
+بمجرد الاتصال، لا تثق به تلقائياً. لضمان أن المستخدم يملك المحفظة فعلاً، يطلب منه توقيع رسالة. هذا هو المعيار في تطبيقات الويب 3.
+
+```javascript
+// frontend/js/auth.js
+async function authenticateWallet(account) {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    
+    // رسالة فريدة لتجنب هجمات إعادة الإرسال
+    const message = `Welcome to Nexus Protocol!\n\nPlease sign this message to verify your wallet ownership.\n\nNonce: ${Date.now()}`;
+    
+    try {
+        const signature = await signer.signMessage(message);
+        console.log('✍️ تم التوقيع بنجاح:', signature);
+        
+        // إرسال التوقيع والرسالة إلى الخلفية للتحقق
+        const response = await fetch('/api/auth/verify-signature', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: account, message, signature })
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            console.log('🔐 تم التحقق من الهوية بنجاح!');
+            // حفظ جلسة المستخدم
+            localStorage.setItem('nexus_auth_token', result.token);
+        }
+    } catch (error) {
+        console.error('❌ فشل التحقق:', error);
+        alert('فشل التحقق من توقيع المحفظة.');
+    }
+}
+```
+
+#### 3. لوحة تحكم الأرباح والخسائر (PnL Dashboard)
+هذه اللوحة هي التي تعرض لك أداء البوتات والأرباح. يمكنك استخدام مكتبة رسوم بيانية مثل `Chart.js` لعرض الأرباح بمرور الوقت. ستقوم الواجهة بطلب البيانات من الخلفية عبر API.
+
+```html
+<!-- frontend/dashboard.html (جزء من الصفحة) -->
+<div class="dashboard-panel">
+    <h3>📈 أداء التداول (PnL)</h3>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span>إجمالي الأرباح</span>
+            <strong id="total-profit">$0.00</strong>
+        </div>
+        <div class="stat-card">
+            <span>الرسوم المدفوعة</span>
+            <strong id="total-fees">$0.00</strong>
+        </div>
+        <div class="stat-card">
+            <span>الرصيد الحالي</span>
+            <strong id="current-balance">$0.00</strong>
+        </div>
+    </div>
+    <canvas id="profit-chart"></canvas>
+</div>
+
+<script>
+// frontend/js/dashboard.js
+async function loadDashboardData() {
+    const authToken = localStorage.getItem('nexus_auth_token');
+    if (!authToken) return;
+
+    // طلب البيانات من الخلفية
+    const response = await fetch('/api/bot/performance', {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    const data = await response.json();
+
+    // تحديث الأرقام
+    document.getElementById('total-profit').innerText = `$${data.totalPnL.toFixed(2)}`;
+    document.getElementById('total-fees').innerText = `$${data.totalFees.toFixed(2)}`;
+    document.getElementById('current-balance').innerText = `$${data.currentBalance.toFixed(2)}`;
+
+    // رسم بياني للأرباح
+    const ctx = document.getElementById('profit-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.history.map(h => h.date),
+            datasets: [{
+                label: 'الأرباح اليومية',
+                data: data.history.map(h => h.pnl),
+                borderColor: '#00ff9d',
+                tension: 0.4
+            }]
+        }
+    });
+}
+
+// تشغيل عند تحميل الصفحة
+window.addEventListener('load', loadDashboardData);
+</script>
+```
+
+---
+
+### 📝 ملاحظات هامة جداً قبل البدء
+
+*   **⚠️ أمان المفاتيح السرية**: **لا تضع أبداً** مفاتيح `BINANCE_API_KEY` أو `PRIVATE_KEY` في كود الواجهة الأمامية. هذه المفاتيح يجب أن تبقى فقط في "الخلفية" (Backend) داخل ملف `.env` أو Replit Secrets.
+*   **🧪 ابدأ بوضع التجربة (Dry Run)**: قبل أن يتداول البوت بأموال حقيقية، تأكد من أن كود البوت يعمل بشكل صحيح. أضف خاصية "وضع التجربة" التي تسجل الصفقات التي **كان يمكن** تنفيذها دون تنفيذها فعلاً. هذا يمنع الخسائر الناتجة عن أخطاء برمجية.
+*   **📈 تقدير رسوم الغاز**: على BSC، رسوم الغاز منخفضة جداً، لكن يجب حسابها بدقة. يمكنك استخدام دالة `eth_estimateGas` عبر Web3 لحساب التكلفة التقريبية قبل إرسال أي معاملة.
+*   **💼 تتبع الأرباح (PnL)**: معادلة الربح والخسارة هي: `PnL = (سعر البيع × الكمية) - (سعر الشراء × الكمية) - الرسوم`. لتتبع ذلك، يجب على البوت تسجيل كل صفقة (سعر الدخول، سعر الخروج، الكمية) في قاعدة بيانات.
+
+هذا هيكل شامل يغطي كل ما طلبته. يمكننا الآن البدء في تفصيل أي جزء تريده، مثل كتابة كود كامل لبوت واحد، أو تصميم واجهة المستخدم. أخبرني من أين تريد أن نبدأ.

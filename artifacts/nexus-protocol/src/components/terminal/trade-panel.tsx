@@ -43,6 +43,7 @@ type TradeOrder = {
   exchange_order_id: string | null;
   created_at: number;
 };
+type SignalRequest = { side: 'BUY' | 'SELL'; requestId: number } | null;
 type ApiEnvelope = { error?: string };
 
 const API_ROOT = '/nexus-api/api';
@@ -74,7 +75,7 @@ function formatAmount(value: string, maximumFractionDigits = 8) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits }).format(numeric);
 }
 
-export function TradePanel({ symbol, wallet }: { symbol: TerminalSymbol; wallet: WalletSession }) {
+export function TradePanel({ symbol, wallet, signalRequest }: { symbol: TerminalSymbol; wallet: WalletSession; signalRequest: SignalRequest }) {
   const [health, setHealth] = useState<ApiHealth | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -118,6 +119,13 @@ export function TradePanel({ symbol, wallet }: { symbol: TerminalSymbol; wallet:
   useEffect(() => {
     setQuote(null);
   }, [symbol]);
+
+  useEffect(() => {
+    if (!signalRequest) return;
+    setSide(signalRequest.side);
+    setAmount('');
+    setQuote(null);
+  }, [signalRequest]);
 
   useEffect(() => {
     if (!quote) return;
