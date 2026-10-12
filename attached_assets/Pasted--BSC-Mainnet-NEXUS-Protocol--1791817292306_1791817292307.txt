@@ -1,0 +1,76 @@
+# 🎯 المهمة: إطلاق نظام الاشتراكات على BSC Mainnet
+
+## السياق
+
+المشروع: NEXUS Protocol
+العقد الحالي: 0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705 (توكن BEP-20)
+الرصيد: 700,000,038 NEXUS
+Treasury: 0x03884d36AE674bFa3B2b54b3bff92E13405389AF
+
+الهدف: نشر SubscriptionManager على BSC Mainnet للسماح للمستخدمين
+بالاشتراك في خطط NEXUS (FREE / STARTER / PRO / ENTERPRISE).
+
+## ⚠️ قواعد إلزامية
+
+1. BSC Mainnet فقط (Chain ID 56) — لا Testnet
+2. لا تفعّل Auto-Trading أبداً — البوتات تحليل فقط
+3. استخدم OpenZeppelin 4.9.0 (نفس إصدار NexusToken)
+4. Solidity ^0.8.19
+5. USDT على BSC = 18 decimals
+6. BSC يستخدم PoA → ExtraDataToPOAMiddleware
+7. لا مفاتيح في الكود — كل شيء من Replit Secrets
+8. وثّق كل قرار في README.md
+
+## 🔴 الخطوة 0: إصلاح ثغرة الترقية (حرجة!)
+
+قبل أي نشر، أصلح ثغرة في SubscriptionManager.sol → upgrade():
+
+### المشكلة:
+- PRO: $199/شهر = $6.63/يوم
+- ENTERPRISE: $999/سنة = $2.74/يوم
+- النتيجة: ترقية PRO → ENTERPRISE تعطي فلوس مجانية للمستخدم
+
+### الحل المطلوب:
+
+```solidity
+function upgrade(uint256 newPlanId, address paymentToken) 
+    external nonReentrant 
+{
+    Subscription storage sub = subscriptions[msg.sender];
+    require(sub.planId < newPlanId, "Can only upgrade");
+    require(sub.expiresAt > block.timestamp, "Expired, use subscribe");
+    
+    Plan memory oldPlan = plans[sub.planId];
+    Plan memory newPlan = plans[newPlanId];
+    require(newPlan.active, "New plan inactive");
+    
+    uint256 remaining = sub.expiresAt - block.timestamp;
+    
+    // حساب التكلفة المتبقية من الخطة القديمة
+    uint256 oldValue = (oldPlan.priceUSDT * remaining) / oldPlan.duration;
+    
+    // حساب تكلفة نفس الفترة بالخطة الجديدة
+    uint256 newCost = (newPlan.priceUSDT * remaining) / newPlan.duration;
+    
+    // ✅ الإصلاح: الحد الأدنى 25% من السعر الكامل للخطة الجديدة
+    uint256 minDue = (newPlan.priceUSDT * 25) / 100;
+    uint256 amountDue = newCost > minDue ? newCost : minDue;
+    
+    // تحويل المبلغ
+    if (amountDue > 0) {
+        require(
+            IERC20(paymentToken).transferFrom(
+                msg.sender, 
+                treasury, 
+                amountDue
+            ), 
+            "Payment failed"
+        );
+    }
+    
+    // تحديث الخطة مع إبقاء تاريخ الانتهاء الأصلي
+    sub.planId = newPlanId;
+    sub.totalPaid += amountDue;
+    
+    emit Upgraded(msg.sender, oldPlan.name, newPlan.name, amountDue);
+}
