@@ -6,7 +6,7 @@ This document prepares the requirements for a possible BSC Mainnet release. It i
 
 | Gate | Current status |
 | --- | --- |
-| Local subscription contract tests | 13 pass in the current workspace |
+| Local subscription contract tests | 15 pass in the current workspace |
 | BSC Testnet deployment | Not done. The secure secrets request was dismissed; no transaction was sent |
 | Deployed end-to-end subscription tests | Not done |
 | Independent security review | Not done |
@@ -22,7 +22,7 @@ The supplied address `0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705` was identified
 - [ ] **Complete and document a BSC Testnet rehearsal first.** Deploy with test-only wallets and a mock 18-decimal payment token; verify addresses and source; test subscription purchase with both payment tokens, entitlement gates, renewal opt-in/keeper flow, cancellation, expiry, upgrades, failed payments, duplicate transaction hashes, and backend access checks.
 - [ ] **Reconcile the Mainnet token behavior.** Independently verify the NEXUS token address, bytecode/source, owner, decimals, transfer behavior, and fee rules. `SubscriptionManager` requires exact 18-decimal token transfers and rejects fee-on-transfer payments. Confirm that the deployed manager can receive NEXUS without a transfer fee, or that the actual token supports the required exemption.
 - [ ] **Select and verify the Mainnet payment token.** Confirm the intended BSC stablecoin contract address and its on-chain decimals from authoritative sources. The subscription contract requires 18 decimals; do not assume a token named “USDT” has the correct address or behavior.
-- [ ] **Resolve subscription upgrade pricing before deployment.** The current proration formula compares each plan's price per unit of its own duration while preserving the old expiration. For PRO ($199/30 days) → ENTERPRISE ($999/365 days) with 15 days remaining, the old-plan credit is $99.50 and the new-plan prorated cost is about $41.10, so the current contract charges zero and grants Enterprise access until the existing expiry. Decide whether this is intended; update terms, contract, UI, and tests together.
+- [ ] **Verify the selected upgrade floor in a deployed BSC Testnet rehearsal.** The source now charges the greater of the prorated price difference and 25% of the new plan's full USDT price (converted at 80 NEXUS per USDT when paying in NEXUS), and preserves the existing expiry. Local contract tests cover PRO → ENTERPRISE with both payment tokens; repeat this on Testnet and confirm the wallet prompt, event amount, access tier, expiry, and renewal reset before any Mainnet release.
 - [ ] **Decide emergency controls.** Review whether plan deactivation alone is sufficient to stop new subscriptions/renewals, or whether the contract needs an audited pause/recovery mechanism and clear user-access behavior.
 - [ ] **Prove role and treasury controls.** The current Testnet deployment script defaults several roles to the deployer if separate addresses are absent. For Mainnet, assign owner/treasury to reviewed, independently controlled addresses—preferably a multisig—and use a dedicated, limited keeper. Verify role grant, revocation, withdrawal, and recovery procedures.
 - [ ] **Run an independent security review.** Cover Solidity contracts, constructor arguments, token compatibility, keeper authorization, payment/renewal consent, upgrade math, backend transaction verification, rate limits, authentication, and deployment scripts. Fix findings and rerun tests; re-review material changes.

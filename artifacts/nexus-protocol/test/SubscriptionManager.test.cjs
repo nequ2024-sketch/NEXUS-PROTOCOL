@@ -78,7 +78,7 @@ describe("SubscriptionManager", function () {
     expect(await manager.isActive(alice.address)).to.equal(true);
   });
 
-  it("charges only the prorated upgrade difference and preserves the old expiration", async function () {
+  it("charges the greater of the prorated difference and 25% minimum, preserving the old expiration", async function () {
     const { manager, usdt, alice } = await deployManager();
     await manager.connect(alice).subscribe(1, await usdt.getAddress());
     const initial = await manager.subscriptions(alice.address);
@@ -88,15 +88,60 @@ describe("SubscriptionManager", function () {
     const receipt = await tx.wait();
     const block = await ethers.provider.getBlock(receipt.blockNumber);
     const remaining = initial.expiresAt - BigInt(block.timestamp);
-    const expectedDifference = (e18(199) * remaining / MONTH) - (e18(49) * remaining / MONTH);
+    const oldCredit = e18(49) * remaining / MONTH;
+    const newCost = e18(199) * remaining / MONTH;
+    const proratedDifference = newCost > oldCredit ? newCost - oldCredit : 0n;
+    const minimumDue = e18(199) / 4n;
     const paymentEvent = receipt.logs
       .map((log) => { try { return manager.interface.parseLog(log); } catch { return null; } })
       .find((event) => event?.name === "SubscriptionPayment");
-    expect(paymentEvent.args.amount).to.equal(expectedDifference);
+    expect(paymentEvent.args.amount).to.equal(
+      proratedDifference > minimumDue ? proratedDifference : minimumDue,
+    );
     const upgraded = await manager.subscriptions(alice.address);
     expect(upgraded.planId).to.equal(2n);
     expect(upgraded.expiresAt).to.equal(initial.expiresAt);
     expect(upgraded.autoRenew).to.equal(false);
+  });
+
+  it("charges the 25% Enterprise minimum for a PRO upgrade paid in USDT", async function () {
+    const { manager, usdt, alice } = await deployManager();
+    await manager.connect(alice).subscribe(2, await usdt.getAddress());
+    await manager.connect(alice).setAutoRenew(true);
+    const initial = await manager.subscriptions(alice.address);
+
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(initial.lastCharged + 15n * DAY)]);
+    await ethers.provider.send("evm_mine", []);
+    const tx = await manager.connect(alice).upgrade(3, await usdt.getAddress());
+    const receipt = await tx.wait();
+    const paymentEvent = receipt.logs
+      .map((log) => { try { return manager.interface.parseLog(log); } catch { return null; } })
+      .find((event) => event?.name === "SubscriptionPayment");
+
+    expect(paymentEvent.args.amount).to.equal(e18(999) / 4n);
+    const upgraded = await manager.subscriptions(alice.address);
+    expect(upgraded.planId).to.equal(3n);
+    expect(upgraded.expiresAt).to.equal(initial.expiresAt);
+    expect(upgraded.autoRenew).to.equal(false);
+  });
+
+  it("converts the 25% Enterprise upgrade minimum at 80 NEXUS per USDT", async function () {
+    const { manager, nexus, alice } = await deployManager();
+    await manager.connect(alice).subscribe(2, await nexus.getAddress());
+    const initial = await manager.subscriptions(alice.address);
+
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(initial.lastCharged + 15n * DAY)]);
+    await ethers.provider.send("evm_mine", []);
+    const tx = await manager.connect(alice).upgrade(3, await nexus.getAddress());
+    const receipt = await tx.wait();
+    const paymentEvent = receipt.logs
+      .map((log) => { try { return manager.interface.parseLog(log); } catch { return null; } })
+      .find((event) => event?.name === "SubscriptionPayment");
+
+    expect(paymentEvent.args.amount).to.equal(e18(19_980));
+    const upgraded = await manager.subscriptions(alice.address);
+    expect(upgraded.planId).to.equal(3n);
+    expect(upgraded.expiresAt).to.equal(initial.expiresAt);
   });
 
   it("restricts plan administration, accepts only configured payment tokens, and rejects bad decimals", async function () {

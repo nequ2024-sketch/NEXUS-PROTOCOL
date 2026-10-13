@@ -229,7 +229,9 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
     const credit = (currentPlan.priceUSDT * remaining) / currentPlan.duration;
     const newCost = (plan.priceUSDT * remaining) / plan.duration;
     const difference = newCost > credit ? newCost - credit : 0n;
-    return selectedToken === 'usdt' ? difference : difference * 80n;
+    const minimumDue = plan.priceUSDT / 4n + (plan.priceUSDT % 4n === 0n ? 0n : 1n);
+    const amountUSDT = difference > minimumDue ? difference : minimumDue;
+    return selectedToken === 'usdt' ? amountUSDT : amountUSDT * 80n;
   }
 
   async function getSigner() {
@@ -308,7 +310,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
         await approveTx.wait();
       }
       setBusy('submitting');
-      setNotice(`${snapshot.subscription.active && snapshot.subscription.planId > 0n ? 'Confirm the prorated upgrade' : 'Confirm the subscription purchase'} in your wallet.`);
+      setNotice(`${snapshot.subscription.active && snapshot.subscription.planId > 0n ? 'Confirm the upgrade; the greater of the prorated difference and 25% minimum is charged' : 'Confirm the subscription purchase'} in your wallet.`);
       const tx = snapshot.subscription.active && snapshot.subscription.planId > 0n
         ? await manager.upgrade(plan.id, paymentAddress)
         : await manager.subscribe(plan.id, paymentAddress);
@@ -494,7 +496,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
                 <div className="sub-plan-rule" />
                 <ul>{(TIER_FEATURES[plan.name.toUpperCase()] ?? []).map((feature) => <li key={feature}><Check aria-hidden="true" />{feature}</li>)}</ul>
                 {!plan.active && <div className="sub-plan-inactive" data-testid={`status-plan-inactive-${plan.id}`}>INACTIVE ON-CHAIN</div>}
-                {isUpgrade && <div className="sub-proration" data-testid={`text-upgrade-price-${plan.id}`}><span>PRORATED NOW</span><strong>{amount(charge)} {paymentSymbol}</strong><small>Unused prior-plan value credited; expiry stays the same.</small></div>}
+                {isUpgrade && <div className="sub-proration" data-testid={`text-upgrade-price-${plan.id}`}><span>UPGRADE ESTIMATE</span><strong>{amount(charge)} {paymentSymbol}</strong><small>Greater of the prorated difference or 25% of the new plan price; expiry stays the same.</small></div>}
                 <button type="button" className={`sub-button ${plan.id === 2 ? 'primary' : 'secondary'}`} disabled={isBusy || readLoading || !plan.active || plan.id === 0 || isCurrent || (currentHasPaidPlan && snapshot.subscription.active && !isUpgrade) || !hasPaymentBalance || wallet.chainId !== TESTNET_CHAIN_ID} onClick={() => void purchase(plan)} data-testid={`button-plan-action-${plan.id}`}>
                   {isBusy && selectedPlan === plan.id ? <LoaderCircle className="sub-spin" /> : null}{actionLabel}
                 </button>
@@ -524,7 +526,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
     </>}
 
     <section className="sub-disclosures" aria-label="Important subscription details">
-      <div><span className="sub-disclosure-index">01</span><div><strong>Prorated upgrades</strong><p>Unused prior-plan value is credited toward the higher plan. Upgrades retain the same expiry and reset auto-renew to off.</p></div></div>
+      <div><span className="sub-disclosure-index">01</span><div><strong>Upgrade pricing</strong><p>The charge is the greater of the prorated price difference and 25% of the new plan’s full price. Upgrades retain the same expiry and reset auto-renew to off.</p></div></div>
       <div><span className="sub-disclosure-index">02</span><div><strong>Cancel means no renewal</strong><p>Cancellation disables future renewal; access remains until the expiresAt value recorded by the contract.</p></div></div>
       <div><span className="sub-disclosure-index">03</span><div><strong>Revoke allowance separately</strong><p>Cancel does not revoke a token allowance. Manage or revoke approvals in your wallet if you no longer want the contract to have allowance.</p></div></div>
       <div><span className="sub-disclosure-index">04</span><div><strong>Trading stays explicit</strong><p>Any bot or trade interaction still requires your explicit per-order confirmation. Subscription access does not authorize unattended trading.</p></div></div>

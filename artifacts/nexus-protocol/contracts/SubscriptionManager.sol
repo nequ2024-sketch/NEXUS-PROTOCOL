@@ -167,7 +167,7 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
         emit SubscriptionCancelled(msg.sender, subscription.planId, subscription.expiresAt);
     }
 
-    /// @notice Upgrade immediately for the remaining term; prior unused value is credited.
+    /// @notice Upgrade for the remaining term, charging the greater of the prorated difference or 25% of the new plan price; expiry is preserved.
     function upgrade(uint256 newPlanId, address paymentToken) external nonReentrant {
         UserSubscription storage subscription = subscriptions[msg.sender];
         require(subscription.planId > 0 && isActive(msg.sender), "SubscriptionManager: no active paid plan");
@@ -181,9 +181,12 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
         uint256 oldCreditUSDT = Math.mulDiv(oldPlan.priceUSDT, remaining, oldPlan.duration);
         uint256 newCostUSDT = Math.mulDiv(newPlan.priceUSDT, remaining, newPlan.duration);
         uint256 differenceUSDT = newCostUSDT > oldCreditUSDT ? newCostUSDT - oldCreditUSDT : 0;
+        uint256 minimumUSDT = newPlan.priceUSDT / 4;
+        if (newPlan.priceUSDT % 4 != 0) minimumUSDT += 1;
+        uint256 amountUSDT = differenceUSDT > minimumUSDT ? differenceUSDT : minimumUSDT;
         uint256 amount = paymentToken == address(usdt)
-            ? differenceUSDT
-            : Math.mulDiv(differenceUSDT, NEXUS_PER_USDT, 1);
+            ? amountUSDT
+            : Math.mulDiv(amountUSDT, NEXUS_PER_USDT, 1);
         _collectExact(paymentToken, msg.sender, amount);
 
         subscription.planId = newPlanId;
