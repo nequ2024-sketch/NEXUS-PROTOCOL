@@ -27,7 +27,7 @@ Queried a public BSC Mainnet RPC at block `127402971` (`2026-10-13T12:30:02Z`). 
 | USDT `0x55d398326f99059fF775485246999027B3197955` | Contract code present (4,413 bytes); `name()` = `Tether USD`, `symbol()` = `USDT`, `decimals()` = 18 | Requested metadata matches |
 | Previously supplied Treasury `0x03884d36AE674bFa3B2b54b3bff92E13405389AF` | Code is `0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b` (23 bytes), matching an EIP-7702 delegation designator to `0x63c0c19a282a1b52b07dd5a65b58948a07dae32b`; transaction count 17; current native balance approximately 0.0063132173 BNB | **Not a plain no-code EOA.** Prior inbound transaction history could not be verified from an explorer in this session. |
 
-The previously supplied Treasury fails the requested EOA-only check. Its nonzero nonce and balance indicate an active address but do not, by themselves, prove a successful prior inbound transaction. The user chose to replace it but has not supplied a replacement yet. The path therefore has no Treasury default: set `BSC_MAINNET_TREASURY_ADDRESS` only after choosing a plain EOA and verifying a successful prior inbound transaction. The explorer history check requires a BscScan API key.
+The user chose to keep the supplied Treasury address and disable its EIP-7702 delegation through MetaMask. Do not deploy until the user confirms that change and a fresh BSC Mainnet read returns `eth_getCode(treasury) == "0x"`. Its nonzero nonce and balance indicate an active address but do not, by themselves, prove a successful prior inbound transaction. The explorer history check still requires a BscScan API key.
 
 ## Blocking technical work
 

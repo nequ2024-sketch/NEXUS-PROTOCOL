@@ -5,6 +5,7 @@ const { ethers } = hre;
 export const MAINNET_ADDRESSES = Object.freeze({
   usdt: "0x55d398326f99059fF775485246999027B3197955",
   nexus: "0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705",
+  treasury: "0x03884d36AE674bFa3B2b54b3bff92E13405389AF",
 });
 
 const TOKEN_ABI = [
@@ -115,50 +116,38 @@ export async function inspectMainnetAddresses() {
   const provider = ethers.provider;
   const network = await provider.getNetwork();
   const block = await provider.getBlock("latest");
-  const treasuryInput = process.env.BSC_MAINNET_TREASURY_ADDRESS?.trim() || "";
-  const treasuryAddress = ethers.isAddress(treasuryInput)
-    ? ethers.getAddress(treasuryInput.toLowerCase())
-    : null;
   const addresses = {
     usdt: ethers.getAddress(MAINNET_ADDRESSES.usdt.toLowerCase()),
     nexus: ethers.getAddress(MAINNET_ADDRESSES.nexus.toLowerCase()),
+    treasury: ethers.getAddress(MAINNET_ADDRESSES.treasury.toLowerCase()),
   };
   const [usdt, nexus] = await Promise.all([
     readToken(addresses.usdt, { name: "Tether USD", symbol: "USDT", decimals: 18 }),
     readToken(addresses.nexus, { name: "Nexus Protocol", symbol: "NEXUS", decimals: 18 }),
   ]);
-  const [treasuryCode, treasuryNonce, treasuryBalance, inboundHistory] = treasuryAddress
-    ? await Promise.all([
-        provider.getCode(treasuryAddress),
-        provider.getTransactionCount(treasuryAddress),
-        provider.getBalance(treasuryAddress),
-        verifyInboundHistory(treasuryAddress),
-      ])
-    : [
-        null,
-        null,
-        null,
-        { status: "not_verified", reason: "BSC_MAINNET_TREASURY_ADDRESS is not configured or invalid." },
-      ];
+  const treasuryAddress = addresses.treasury;
+  const [treasuryCode, treasuryNonce, treasuryBalance, inboundHistory] = await Promise.all([
+    provider.getCode(treasuryAddress),
+    provider.getTransactionCount(treasuryAddress),
+    provider.getBalance(treasuryAddress),
+    verifyInboundHistory(treasuryAddress),
+  ]);
 
   const delegationDesignator =
-    typeof treasuryCode === "string" &&
-    treasuryCode.toLowerCase().startsWith("0xef0100") &&
-    treasuryCode.length === 48;
+    treasuryCode.toLowerCase().startsWith("0xef0100") && treasuryCode.length === 48;
   const delegationTarget = delegationDesignator
     ? ethers.getAddress(`0x${treasuryCode.slice(8)}`)
     : null;
-  const treasuryIsPlainEoa = Boolean(treasuryAddress && treasuryCode === "0x");
+  const treasuryIsPlainEoa = treasuryCode === "0x";
   const chainId = Number(network.chainId);
   const blockers = [];
   if (chainId !== 56) blockers.push(`Connected to chain ${chainId}; expected BSC Mainnet (56).`);
   if (!usdt.valid) blockers.push("USDT address metadata did not match Tether USD / USDT / 18 decimals.");
   if (!nexus.valid) blockers.push("NEXUS address metadata did not match Nexus Protocol / NEXUS / 18 decimals.");
-  if (!treasuryAddress) blockers.push("BSC_MAINNET_TREASURY_ADDRESS must be set to a valid replacement address.");
-  else if (!treasuryIsPlainEoa) {
+  if (!treasuryIsPlainEoa) {
     blockers.push(
       delegationDesignator
-        ? "Treasury has an EIP-7702 delegation designator; it is not a plain no-code EOA."
+        ? "Treasury has EIP-7702 delegation. Please disable Smart Account in MetaMask."
         : "Treasury has on-chain bytecode; it is not a plain no-code EOA.",
     );
   }
@@ -174,15 +163,15 @@ export async function inspectMainnetAddresses() {
     usdt,
     nexus,
     treasury: {
-      address: treasuryAddress ?? null,
-      codeBytes: typeof treasuryCode === "string" ? (treasuryCode.length - 2) / 2 : null,
+      address: treasuryAddress,
+      codeBytes: (treasuryCode.length - 2) / 2,
       code: treasuryCode,
       isPlainEoa: treasuryIsPlainEoa,
       isEip7702DelegatedAccount: delegationDesignator,
       delegationTarget,
       transactionCount: treasuryNonce,
-      nativeBalanceWei: treasuryBalance?.toString() ?? null,
-      nativeBalanceBnb: treasuryBalance === null ? null : ethers.formatEther(treasuryBalance),
+      nativeBalanceWei: treasuryBalance.toString(),
+      nativeBalanceBnb: ethers.formatEther(treasuryBalance),
       inboundHistory,
     },
     deploymentReady: blockers.length === 0,

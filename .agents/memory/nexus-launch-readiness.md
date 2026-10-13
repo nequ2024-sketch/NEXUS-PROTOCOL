@@ -9,6 +9,8 @@ The user wants BSC Mainnet as the eventual destination. Their current choice is 
 
 For Mainnet, the user requires the Treasury to be a plain no-code EOA with a verified successful prior inbound transaction. Do not treat an EIP-7702 delegated account as satisfying that plain-EOA requirement unless the user explicitly changes it.
 
-**Why:** The user shared a project review that identified these items as unfinished release prerequisites and warned against exaggerated profit or performance claims; they later stated that Mainnet is the desired destination and specified the Treasury checks.
+Do not deploy using the selected Treasury until the user confirms they disabled its EIP-7702 delegation and a fresh on-chain check returns empty code.
 
-**How to apply:** Keep prototype UI clearly labeled as a preview. Do not show invented statistics, returns, audit status, or live-data claims; track the release gates separately from UI work. Check the Treasury's bytecode and inbound history on-chain before Mainnet use. Treat Mainnet as a gated destination, never as permission to deploy automatically.
+**Why:** The user shared a project review that identified these items as unfinished release prerequisites and warned against exaggerated profit or performance claims; they later stated that Mainnet is the desired destination, specified the Treasury checks, and explicitly required confirmation before deployment after removing delegation.
+
+**How to apply:** Keep prototype UI clearly labeled as a preview. Do not show invented statistics, returns, audit status, or live-data claims; track the release gates separately from UI work. Check the Treasury's bytecode and inbound history on-chain before Mainnet use. Wait for the user's confirmation after a delegation change, then recheck before any deployment. Treat Mainnet as a gated destination, never as permission to deploy automatically.

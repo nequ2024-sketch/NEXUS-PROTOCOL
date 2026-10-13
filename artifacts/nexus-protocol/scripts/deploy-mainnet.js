@@ -72,6 +72,9 @@ async function main() {
 
   const addressReport = await inspectMainnetAddresses();
   console.log(JSON.stringify(addressReport, null, 2));
+  if (addressReport.treasury.isEip7702DelegatedAccount) {
+    throw new Error("Treasury has EIP-7702 delegation. Please disable Smart Account in MetaMask.");
+  }
   if (!addressReport.deploymentReady) {
     throw new Error("Mainnet address preflight failed. Resolve every blocker before deployment.");
   }
@@ -83,7 +86,7 @@ async function main() {
 
   const usdtAddress = ethers.getAddress(MAINNET_ADDRESSES.usdt.toLowerCase());
   const nexusAddress = ethers.getAddress(MAINNET_ADDRESSES.nexus.toLowerCase());
-  const treasuryAddress = addressReport.treasury.address;
+  const treasuryAddress = ethers.getAddress(MAINNET_ADDRESSES.treasury.toLowerCase());
   const manager = await (
     await ethers.getContractFactory("SubscriptionManager")
   ).deploy(usdtAddress, nexusAddress, treasuryAddress);
