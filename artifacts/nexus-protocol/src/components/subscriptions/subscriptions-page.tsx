@@ -434,7 +434,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
       <div className="sub-hero-art" aria-hidden="true">
         <img className="sub-hero-art-image" src={`${import.meta.env.BASE_URL}assets/nexus-campaign.webp`} alt="" />
         <div className="sub-orbit sub-orbit-one" /><div className="sub-orbit sub-orbit-two" />
-        <div className="sub-art-label">NEXUS / ACCESS<br /><b>CONTROL REMAINS YOURS</b></div>
+        <div className="sub-art-label">ILLUSTRATIVE CAMPAIGN ART<br /><b>NOT MARKET DATA OR PERFORMANCE</b></div>
       </div>
       <div className="sub-hero-foot"><span>01 / CONNECT</span><span>02 / AUTHORIZE</span><span>03 / ACCESS</span></div>
     </section>

@@ -1,0 +1,181 @@
+# 🎯 المهمة: تحديث الموقع بالهوية البصرية الجديدة
+
+## السياق
+
+المشروع: NEXUS Protocol
+العقد: 0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705
+Treasury: 0x03884d36AE674bFa3B2b54b3bff92E13405389AF
+
+الهدف: إعادة تصميم الموقع بالكامل بهوية بصرية جديدة مستوحاة من
+صور المشروع الرسمية (13 صورة مرجعية).
+
+## 🎨 لوحة الألوان الرسمية
+
+### الألوان الأساسية:
+--neon-pink: #FF00E5;        /* وردي نيون - اللون الرئيسي */
+--neon-magenta: #E91E63;     /* ماجنتا */
+--cyan: #00E5FF;             /* سماوي - لون NEXUS */
+--neon-green: #00FF88;       /* أخضر ربح */
+--deep-purple: #9D4EDD;      /* بنفسجي غامق */
+--electric-blue: #2196F3;    /* أزرق كهربائي */
+
+### ألوان الخلفية:
+--bg-primary: #05050F;       /* أسود مزرق */
+--bg-secondary: #0A0A1F;     /* كحلي غامق */
+--bg-card: rgba(15,15,35,0.7); /* بطاقات زجاجية */
+
+### ألوان النصوص:
+--text-primary: #FFFFFF;
+--text-secondary: #B0B8D4;
+--text-muted: #6A7090;
+
+## 🏗️ التصميم المطلوب
+
+### 1. الصفحة الرئيسية (index.html)
+
+#### Hero Section:
+- خلفية: صورة المدينة الليلية + شبكة النقاط المتوهجة
+- **اللوجو الكبير** في المنتصف (الشعار السداسي الوردي)
+- العنوان: **NEXUS PROTOCOL** بخط Syncopate
+- الشعار: **"THE FUTURE OF TRADING IS HERE"**
+- زرّان:
+  - **Connect Wallet** (أخضر نيون)
+  - **View Presale** (وردي نيون)
+
+#### قسم الأرقام المباشرة:
+ثلاث بطاقات زجاجية:
+- **+24.8%** (أخضر)
+- **$1,247,392** (أخضر)
+- **AI Signal: BULLISH 92%** (سماوي)
+
+#### قسم الميزات:
+4 بطاقات:
+- **AI Trading Signals** - إشارات ذكية
+- **Real-time Analytics** - تحليلات لحظية
+- **Whale Tracker** - تتبع الحيتان
+- **Risk Engine** - إدارة المخاطر
+
+#### قسم Tokenomics:
+- عرض رسومي (pie chart) لتوزيع NEXUS
+- 700M في التداول
+- 300M للـ Presale
+- 80 NEXUS = 1 USDT
+
+#### قسم Roadmap:
+4 مراحل بتصميم خطي نيون
+
+#### قسم Footer:
+- روابط: Twitter, Telegram, Discord
+- Contract address
+- Disclaimer
+
+### 2. لوحة التحكم (dashboard.html)
+
+#### Header:
+- اللوجو الصغير
+- Wallet address
+- Balance (BNB + NEXUS)
+- Subscription status
+
+#### Stats Grid:
+- Total PnL (أخضر إذا موجب)
+- Active Bots
+- Open Positions
+- Win Rate
+
+#### Charts:
+- Equity Curve (Chart.js) بألوان نيون
+- Market chart (Lightweight Charts)
+- MACD + RSI indicators
+
+#### Positions Table:
+- تصميم داكن مع حدود نيون
+- إشارات ملونة (BUY أخضر / SELL وردي)
+- PnL ملون
+
+### 3. صفحة Presale (presale.html)
+
+- عرض تقدم البيع (progress bar نيون)
+- إدخال الكمية
+- زر Buy NEXUS
+- ربط MetaMask
+- عرض الرصيد
+
+### 4. صفحة الاشتراكات (subscriptions.html)
+
+- 4 خطط (FREE / STARTER / PRO / ENTERPRISE)
+- تصميم البطاقات الزجاجية
+- أزرار Subscribe
+- مقارنة الميزات
+
+## 🎨 التأثيرات البصرية المطلوبة
+
+### Animations:
+- **Glowing pulse** على اللوجو
+- **Particle network** في الخلفية (نقاط + خطوط متحركة)
+- **Neon glow** على الأزرار عند Hover
+- **Smooth fade-in** للأقسام عند Scroll
+
+### Background:
+- **Canvas particles** (شبكة النقاط السماوية)
+- **Gradient overlay** من الأسود إلى الكحلي
+- **Grid pattern** خفيف
+
+### Typography:
+- **Syncopate** للعناوين
+- **JetBrains Mono** للأرقام
+- **Inter** للنصوص
+
+## 📦 الأصول المطلوبة
+
+### 1. اللوجو الرئيسي
+- `logo-hero.png` (1920×1080) - للـ Hero
+- `logo-square.png` (512×512) - للـ Navbar
+- `logo-icon.png` (64×64) - للـ Favicon
+
+### 2. صور الخلفية
+- `bg-city.jpg` (1920×1080) - مدينة ليلية
+- `bg-globe.jpg` - كرة أرضية نيون
+- `bg-network.jpg` - شبكة نقاط
+
+### 3. أيقونات
+- SVG icons بألوان نيون
+
+## 🔧 التنفيذ التقني
+
+### CSS Variables في `:root`:
+```css
+:root {
+    /* Colors */
+    --neon-pink: #FF00E5;
+    --neon-magenta: #E91E63;
+    --cyan: #00E5FF;
+    --neon-green: #00FF88;
+    --deep-purple: #9D4EDD;
+    --electric-blue: #2196F3;
+    
+    /* Backgrounds */
+    --bg-primary: #05050F;
+    --bg-secondary: #0A0A1F;
+    --bg-card: rgba(15, 15, 35, 0.7);
+    --bg-glass: rgba(20, 20, 45, 0.5);
+    
+    /* Text */
+    --text-primary: #FFFFFF;
+    --text-secondary: #B0B8D4;
+    --text-muted: #6A7090;
+    
+    /* Glow Effects */
+    --glow-pink: 0 0 20px rgba(255, 0, 229, 0.5);
+    --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.5);
+    --glow-green: 0 0 20px rgba(0, 255, 136, 0.5);
+    
+    /* Fonts */
+    --font-display: 'Syncopate', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    
+    /* Spacing */
+    --radius: 16px;
+    --radius-lg: 24px;
+}
