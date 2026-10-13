@@ -50,6 +50,7 @@ const SUBSCRIPTION_ABI = [
   'function subscriptions(address) view returns (uint256 planId,uint256 expiresAt,uint256 lastCharged,bool autoRenew,address paymentToken)',
   'function usdt() view returns (address)',
   'function nexus() view returns (address)',
+  'function treasury() view returns (address)',
   'function subscribe(uint256 planId,address paymentToken)',
   'function upgrade(uint256 newPlanId,address paymentToken)',
   'function setAutoRenew(bool enabled)',
@@ -139,9 +140,10 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
       if (bytecode.some((code) => code === '0x')) throw new Error('The Testnet deployment record points to an address without contract code.');
 
       const manager = new Contract(deployment.subscriptionManager, SUBSCRIPTION_ABI, provider);
-      const [usdtAddress, nexusAddress, planRows, rawSub, active, rawMappedSub, block] = await Promise.all([
+      const [usdtAddress, nexusAddress, treasuryAddress, planRows, rawSub, active, rawMappedSub, block] = await Promise.all([
         manager.usdt() as Promise<string>,
         manager.nexus() as Promise<string>,
+        manager.treasury() as Promise<string>,
         Promise.all([0, 1, 2, 3].map((id) => manager.getPlan(id))),
         manager.getSubscription(wallet.address),
         manager.isActive(wallet.address) as Promise<boolean>,
@@ -150,8 +152,9 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
       ]);
       if (
         getAddress(usdtAddress) !== getAddress(deployment.paymentToken) ||
-        getAddress(nexusAddress) !== getAddress(deployment.nexusToken)
-      ) throw new Error('The subscription contract token addresses do not match the verified BSC Testnet deployment record.');
+        getAddress(nexusAddress) !== getAddress(deployment.nexusToken) ||
+        getAddress(treasuryAddress) !== getAddress(deployment.treasury)
+      ) throw new Error('The subscription contract token or treasury addresses do not match the verified BSC Testnet deployment record.');
 
       const tokenAddresses = [usdtAddress, nexusAddress];
       const tokens = tokenAddresses.map((address) => new Contract(address, TOKEN_ABI, provider));
@@ -229,7 +232,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
     const credit = (currentPlan.priceUSDT * remaining) / currentPlan.duration;
     const newCost = (plan.priceUSDT * remaining) / plan.duration;
     const difference = newCost > credit ? newCost - credit : 0n;
-    const minimumDue = plan.priceUSDT / 4n + (plan.priceUSDT % 4n === 0n ? 0n : 1n);
+    const minimumDue = (plan.priceUSDT * 15n + 99n) / 100n;
     const amountUSDT = difference > minimumDue ? difference : minimumDue;
     return selectedToken === 'usdt' ? amountUSDT : amountUSDT * 80n;
   }
@@ -310,7 +313,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
         await approveTx.wait();
       }
       setBusy('submitting');
-      setNotice(`${snapshot.subscription.active && snapshot.subscription.planId > 0n ? 'Confirm the upgrade; the greater of the prorated difference and 25% minimum is charged' : 'Confirm the subscription purchase'} in your wallet.`);
+      setNotice(`${snapshot.subscription.active && snapshot.subscription.planId > 0n ? 'Confirm the upgrade; the greater of the prorated difference and 15% minimum is charged' : 'Confirm the subscription purchase'} in your wallet.`);
       const tx = snapshot.subscription.active && snapshot.subscription.planId > 0n
         ? await manager.upgrade(plan.id, paymentAddress)
         : await manager.subscribe(plan.id, paymentAddress);
@@ -496,7 +499,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
                 <div className="sub-plan-rule" />
                 <ul>{(TIER_FEATURES[plan.name.toUpperCase()] ?? []).map((feature) => <li key={feature}><Check aria-hidden="true" />{feature}</li>)}</ul>
                 {!plan.active && <div className="sub-plan-inactive" data-testid={`status-plan-inactive-${plan.id}`}>INACTIVE ON-CHAIN</div>}
-                {isUpgrade && <div className="sub-proration" data-testid={`text-upgrade-price-${plan.id}`}><span>UPGRADE ESTIMATE</span><strong>{amount(charge)} {paymentSymbol}</strong><small>Greater of the prorated difference or 25% of the new plan price; expiry stays the same.</small></div>}
+                {isUpgrade && <div className="sub-proration" data-testid={`text-upgrade-price-${plan.id}`}><span>UPGRADE ESTIMATE</span><strong>{amount(charge)} {paymentSymbol}</strong><small>Greater of the prorated difference or 15% of the new plan price; expiry stays the same.</small></div>}
                 <button type="button" className={`sub-button ${plan.id === 2 ? 'primary' : 'secondary'}`} disabled={isBusy || readLoading || !plan.active || plan.id === 0 || isCurrent || (currentHasPaidPlan && snapshot.subscription.active && !isUpgrade) || !hasPaymentBalance || wallet.chainId !== TESTNET_CHAIN_ID} onClick={() => void purchase(plan)} data-testid={`button-plan-action-${plan.id}`}>
                   {isBusy && selectedPlan === plan.id ? <LoaderCircle className="sub-spin" /> : null}{actionLabel}
                 </button>
@@ -526,7 +529,7 @@ export function SubscriptionsPage({ wallet }: { wallet: WalletProps }) {
     </>}
 
     <section className="sub-disclosures" aria-label="Important subscription details">
-      <div><span className="sub-disclosure-index">01</span><div><strong>Upgrade pricing</strong><p>The charge is the greater of the prorated price difference and 25% of the new plan’s full price. Upgrades retain the same expiry and reset auto-renew to off.</p></div></div>
+      <div><span className="sub-disclosure-index">01</span><div><strong>Upgrade pricing</strong><p>The charge is the greater of the prorated price difference and 15% of the new plan’s full price. Upgrades retain the same expiry and reset auto-renew to off.</p></div></div>
       <div><span className="sub-disclosure-index">02</span><div><strong>Cancel means no renewal</strong><p>Cancellation disables future renewal; access remains until the expiresAt value recorded by the contract.</p></div></div>
       <div><span className="sub-disclosure-index">03</span><div><strong>Revoke allowance separately</strong><p>Cancel does not revoke a token allowance. Manage or revoke approvals in your wallet if you no longer want the contract to have allowance.</p></div></div>
       <div><span className="sub-disclosure-index">04</span><div><strong>Trading stays explicit</strong><p>Any bot or trade interaction still requires your explicit per-order confirmation. Subscription access does not authorize unattended trading.</p></div></div>

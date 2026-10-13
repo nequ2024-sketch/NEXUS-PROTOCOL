@@ -9,7 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title NEXUS Protocol subscription manager
-/// @notice BSC Testnet-first subscription plans paid in 18-decimal USDT or NEXUS.
+/// @notice Subscription plans paid in 18-decimal USDT or NEXUS, with proceeds forwarded to a fixed treasury.
 contract SubscriptionManager is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -36,6 +36,7 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
 
     IERC20 public immutable usdt;
     IERC20 public immutable nexus;
+    address public immutable treasury;
     uint256 public planCount;
     mapping(uint256 planId => Plan) public plans;
     mapping(address user => UserSubscription) public subscriptions;
@@ -61,13 +62,16 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(address usdt_, address nexus_) Ownable() {
+    constructor(address usdt_, address nexus_, address treasury_) Ownable() {
         require(usdt_ != address(0) && nexus_ != address(0), "SubscriptionManager: zero token");
         require(usdt_ != nexus_, "SubscriptionManager: duplicate token");
+        require(treasury_ != address(0), "SubscriptionManager: zero treasury");
+        require(treasury_ != address(this), "SubscriptionManager: treasury is manager");
         require(IERC20Metadata(usdt_).decimals() == 18, "SubscriptionManager: USDT must use 18 decimals");
         require(IERC20Metadata(nexus_).decimals() == 18, "SubscriptionManager: NEXUS must use 18 decimals");
         usdt = IERC20(usdt_);
         nexus = IERC20(nexus_);
+        treasury = treasury_;
         plans[0] = Plan("FREE", 0, 0, 0, true);
     }
 
@@ -167,7 +171,7 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
         emit SubscriptionCancelled(msg.sender, subscription.planId, subscription.expiresAt);
     }
 
-    /// @notice Upgrade for the remaining term, charging the greater of the prorated difference or 25% of the new plan price; expiry is preserved.
+    /// @notice Upgrade for the remaining term, charging the greater of the prorated difference or 15% of the new plan price; expiry is preserved.
     function upgrade(uint256 newPlanId, address paymentToken) external nonReentrant {
         UserSubscription storage subscription = subscriptions[msg.sender];
         require(subscription.planId > 0 && isActive(msg.sender), "SubscriptionManager: no active paid plan");
@@ -181,8 +185,8 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
         uint256 oldCreditUSDT = Math.mulDiv(oldPlan.priceUSDT, remaining, oldPlan.duration);
         uint256 newCostUSDT = Math.mulDiv(newPlan.priceUSDT, remaining, newPlan.duration);
         uint256 differenceUSDT = newCostUSDT > oldCreditUSDT ? newCostUSDT - oldCreditUSDT : 0;
-        uint256 minimumUSDT = newPlan.priceUSDT / 4;
-        if (newPlan.priceUSDT % 4 != 0) minimumUSDT += 1;
+        uint256 minimumUSDT = Math.mulDiv(newPlan.priceUSDT, 15, 100);
+        if (mulmod(newPlan.priceUSDT, 15, 100) != 0) minimumUSDT += 1;
         uint256 amountUSDT = differenceUSDT > minimumUSDT ? differenceUSDT : minimumUSDT;
         uint256 amount = paymentToken == address(usdt)
             ? amountUSDT
@@ -236,8 +240,14 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
         _requirePaymentToken(token);
         uint256 amount = IERC20(token).balanceOf(address(this));
         require(amount > 0, "SubscriptionManager: no payment balance");
-        IERC20(token).safeTransfer(owner(), amount);
-        emit Withdrawn(owner(), token, amount);
+        IERC20 payment = IERC20(token);
+        uint256 beforeBalance = payment.balanceOf(treasury);
+        payment.safeTransfer(treasury, amount);
+        require(
+            payment.balanceOf(treasury) - beforeBalance == amount,
+            "SubscriptionManager: fee-on-transfer tokens unsupported"
+        );
+        emit Withdrawn(treasury, token, amount);
     }
 
     function _validatePlan(
@@ -268,10 +278,10 @@ contract SubscriptionManager is Ownable, ReentrancyGuard {
     function _collectExact(address token, address payer, uint256 amount) private {
         if (amount == 0) return;
         IERC20 payment = IERC20(token);
-        uint256 beforeBalance = payment.balanceOf(address(this));
-        payment.safeTransferFrom(payer, address(this), amount);
+        uint256 beforeBalance = payment.balanceOf(treasury);
+        payment.safeTransferFrom(payer, treasury, amount);
         require(
-            payment.balanceOf(address(this)) - beforeBalance == amount,
+            payment.balanceOf(treasury) - beforeBalance == amount,
             "SubscriptionManager: fee-on-transfer tokens unsupported"
         );
     }

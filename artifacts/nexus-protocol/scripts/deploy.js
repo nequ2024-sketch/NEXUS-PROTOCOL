@@ -117,7 +117,7 @@ async function main() {
 
   const subscriptions = await (
     await ethers.getContractFactory("SubscriptionManager")
-  ).deploy(paymentToken, await token.getAddress());
+  ).deploy(paymentToken, await token.getAddress(), treasury);
   await subscriptions.waitForDeployment();
 
   const tokenInventory = ethers.parseUnits("300000000", 18);

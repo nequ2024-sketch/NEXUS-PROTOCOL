@@ -13,6 +13,7 @@ export type TestnetDeployment = {
   paymentTokenDecimals: 18;
   paymentTokenIsMock: boolean;
   mockPaymentToken: string | null;
+  treasury: string;
   signalRegistry: string;
   subscriptionManager: string;
   presaleSettings: {
@@ -34,6 +35,7 @@ function parseDeployment(value: unknown): TestnetDeployment {
     record.nexusToken,
     record.presale,
     record.paymentToken,
+    record.treasury,
     record.signalRegistry,
     record.subscriptionManager,
   ];

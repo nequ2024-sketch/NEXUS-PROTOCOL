@@ -8,10 +8,11 @@ description: User-approved NEXUS plan pricing, entitlements, conversion rate, up
 - PRO costs 199 USDT for 30 days and includes signals and bot access.
 - ENTERPRISE costs 999 USDT total for 365 days and includes all features and API access.
 - NEXUS payments use a fixed rate of 80 NEXUS per 1 USDT; USDT and NEXUS use 18 decimals.
-- Upgrades keep the existing expiry timestamp and charge the greater of the prorated price difference or 25% of the new plan's full USDT price (converted at 80 NEXUS per USDT).
+- Upgrades keep the existing expiry timestamp and charge the greater of the prorated difference or 15% of the new plan's full USDT price (converted at 80 NEXUS per USDT).
+- Subscription, renewal, and upgrade payments go directly to a constructor-fixed treasury; routine payment flows leave no token balance in the manager.
 - Auto-renew is off by default. Enabling it requires explicit opt-in and a separate unlimited-token-allowance approval. Cancellation disables future renewal without removing paid access before expiry.
 - Build and verify the subscription system on BSC Testnet before any Mainnet use.
 
-**Why:** The user explicitly chose these plan prices, entitlements, conversion rate, a 25% upgrade minimum to prevent zero-cost tier upgrades, and renewal safety controls.
+**Why:** The user explicitly chose these plan prices, entitlements, conversion rate, a 15% upgrade minimum, direct treasury payment routing, and renewal safety controls.
 
 **How to apply:** Keep contract initialization, entitlement gates, subscription UI, and renewal operations consistent with these terms; do not present Testnet deployment as Mainnet-ready.
