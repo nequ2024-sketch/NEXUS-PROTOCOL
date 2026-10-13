@@ -5,6 +5,14 @@ require("@nomicfoundation/hardhat-verify");
 require("dotenv").config();
 
 const privateKey = process.env.PRIVATE_KEY;
+const mainnetPrivateKey = process.env.BSC_MAINNET_PRIVATE_KEY;
+if (
+  privateKey &&
+  mainnetPrivateKey &&
+  privateKey.toLowerCase() === mainnetPrivateKey.toLowerCase()
+) {
+  throw new Error("Use a dedicated BSC Mainnet key; do not reuse the Testnet deployer key.");
+}
 
 module.exports = {
   solidity: {
@@ -23,10 +31,18 @@ module.exports = {
       gasPrice: 3_000_000_000,
       accounts: privateKey ? [privateKey] : [],
     },
+    bscMainnet: {
+      url:
+        process.env.BSC_MAINNET_RPC ||
+        "https://bsc-dataseed.binance.org/",
+      chainId: 56,
+      accounts: mainnetPrivateKey ? [mainnetPrivateKey] : [],
+    },
   },
   etherscan: {
     apiKey: {
       bscTestnet: process.env.BSCSCAN_KEY || "",
+      bscMainnet: process.env.BSCSCAN_MAINNET_API_KEY || "",
     },
     customChains: [
       {
@@ -35,6 +51,14 @@ module.exports = {
         urls: {
           apiURL: "https://api-testnet.bscscan.com/api",
           browserURL: "https://testnet.bscscan.com",
+        },
+      },
+      {
+        network: "bscMainnet",
+        chainId: 56,
+        urls: {
+          apiURL: "https://api.bscscan.com/api",
+          browserURL: "https://bscscan.com",
         },
       },
     ],

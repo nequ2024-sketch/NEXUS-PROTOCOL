@@ -12,7 +12,10 @@
     "compile:contracts": "hardhat compile --config hardhat.config.cjs",
     "test:contracts": "hardhat test --config hardhat.config.cjs",
     "deploy:testnet": "hardhat run scripts/deploy.js --network bscTestnet --config hardhat.config.cjs",
-    "verify:testnet": "hardhat run scripts/verify.js --network bscTestnet --config hardhat.config.cjs"
+    "verify:testnet": "hardhat run scripts/verify.js --network bscTestnet --config hardhat.config.cjs",
+    "check:mainnet-addresses": "hardhat run scripts/check-mainnet-addresses.js --network bscMainnet --config hardhat.config.cjs",
+    "deploy:mainnet": "hardhat run scripts/deploy-mainnet.js --network bscMainnet --config hardhat.config.cjs",
+    "verify:mainnet": "hardhat run scripts/verify-mainnet.js --network bscMainnet --config hardhat.config.cjs"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
