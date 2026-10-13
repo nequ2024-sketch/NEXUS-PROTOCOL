@@ -83,7 +83,7 @@ async function main() {
 
   const usdtAddress = ethers.getAddress(MAINNET_ADDRESSES.usdt.toLowerCase());
   const nexusAddress = ethers.getAddress(MAINNET_ADDRESSES.nexus.toLowerCase());
-  const treasuryAddress = ethers.getAddress(MAINNET_ADDRESSES.treasury.toLowerCase());
+  const treasuryAddress = addressReport.treasury.address;
   const manager = await (
     await ethers.getContractFactory("SubscriptionManager")
   ).deploy(usdtAddress, nexusAddress, treasuryAddress);
