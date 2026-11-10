@@ -5,6 +5,8 @@ description: Project-specific release gates and truthful marketing constraints.
 
 Do not describe NEXUS as ready for a public launch, secure, performance-tested, legally cleared, or profitable based on appearance or a single response-time observation. Before public sales or real funds, verify the code and contracts, run functional and realistic load tests, obtain an independent security review, and clarify KYC/AML, licensing, and terms with qualified counsel.
 
+The existing NEXUS token at `0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705` is source-verified on BscScan with an exact-match result using Solidity 0.8.34 and optimization disabled. **Why:** BscScan verification confirms a compiler/source match, not an independent security audit. **How to apply:** Report it as source-verified only; keep security, legal, and operational launch gates separate.
+
 The user wants BSC Mainnet as the eventual destination. Their current choice is to prepare Mainnet requirements only, not to deploy. Testnet verification, release gates, exact configuration review, and explicit approval for each live transaction remain required.
 
 For Mainnet, the user requires the Treasury to be a plain no-code EOA with a verified successful prior inbound transaction. Do not treat an EIP-7702 delegated account as satisfying that plain-EOA requirement unless the user explicitly changes it.

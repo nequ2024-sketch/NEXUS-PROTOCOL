@@ -8,6 +8,7 @@ import { Activity, ArrowUpRight, Boxes, Check, ChevronRight, CircleAlert, Comman
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { TESTNET_CHAIN_ID, type ContractName } from '@/lib/contracts';
 import { PresalePage } from '@/components/presale/presale-page';
+import { MainnetNexusStatus } from '@/components/overview/mainnet-nexus-status';
 import { SubscriptionsPage } from '@/components/subscriptions/subscriptions-page';
 import { useTestnetDeployment } from '@/lib/testnet-deployment';
 
@@ -137,7 +138,7 @@ function Overview({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
       <div className="home-section-head"><div><span className="home-kicker">LIVE DATA / READINESS</span><h2 id="home-live-title">What the interface can verify.</h2></div><span className="tag">NO SEEDED METRICS</span></div>
       <div className="home-live-grid">
         <article className="home-live-item"><span className="home-index">01 / MARKET</span><strong>Public spot feed</strong><b className="home-state">LIVE IN TERMINAL</b><p>Binance market prices and candles are available on the Terminal page. No market quote is asserted here.</p><Link href="/terminal">OPEN MARKET TERMINAL <ArrowUpRight /></Link></article>
-        <article className="home-live-item"><span className="home-index">02 / TOKEN</span><strong>NEXUS on-chain data</strong><b className="home-state pending">NOT YET VERIFIED</b><p>Supply, price and wallet balances require a verified Testnet token read and a connected wallet.</p></article>
+        <MainnetNexusStatus walletAddress={wallet.address} />
         <article className="home-live-item"><span className="home-index">03 / REGISTRY</span><strong>Signals and presale</strong><b className="home-state pending">{deploymentLoading ? 'CHECKING RECORD' : deployment ? 'CONTRACT READ REQUIRED' : 'UNAVAILABLE'}</b><p>Registry entries and sale state are not displayed as facts until fetched from verified BSC Testnet contracts.</p></article>
       </div>
     </section>

@@ -7,7 +7,7 @@ This document prepares the requirements for a possible BSC Mainnet release. It i
 | Gate | Current status |
 | --- | --- |
 | Local subscription contract tests | 16 pass in the current workspace |
-| BSC Testnet deployment | Not done; the current request is to prepare a direct Mainnet path, and no chain transaction was sent |
+| BSC Testnet deployment | Not done; the current app has no Testnet deployment record, and no deployment transaction was sent in this work |
 | Deployed end-to-end subscription tests | Not done |
 | Independent security review | Not done |
 | Load testing | Not done |
@@ -15,7 +15,7 @@ This document prepares the requirements for a possible BSC Mainnet release. It i
 | BSC Mainnet configuration | Separate chain config, address preflight, gated deploy, and verify scripts prepared |
 | BSC Mainnet deployment | Not authorized or sent; preflight is blocked by the Treasury address checks below |
 
-The supplied address `0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705` was identified by the user as the NEXUS ERC-20 token, not a subscription manager. This document does not independently verify that address or its code.
+The supplied address `0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705` is the existing NEXUS token contract, not a subscription manager. Its source is now verified on BscScan with an exact-match result; the web app’s Mainnet view is read-only and this does not constitute an audit.
 
 ## Read-only address check
 
@@ -23,7 +23,7 @@ Queried a public BSC Mainnet RPC at block `127402971` (`2026-10-13T12:30:02Z`). 
 
 | Address | On-chain result | Status |
 | --- | --- | --- |
-| NEXUS `0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705` | Contract code present (10,605 bytes); `name()` = `Nexus Protocol`, `symbol()` = `NEXUS`, `decimals()` = 18 | Requested metadata matches |
+| NEXUS `0xDcc63967f27B67c7e6bcfc3bA0c23Ba5f69d6705` | Contract code present (10,605 bytes); `name()` = `Nexus Protocol`, `symbol()` = `NEXUS`, `decimals()` = 18; BscScan source status: **Verified — Exact Match** (Solidity 0.8.34, optimizer disabled) | Requested metadata and source verification confirmed; not a security audit |
 | USDT `0x55d398326f99059fF775485246999027B3197955` | Contract code present (4,413 bytes); `name()` = `Tether USD`, `symbol()` = `USDT`, `decimals()` = 18 | Requested metadata matches |
 | Previously supplied Treasury `0x03884d36AE674bFa3B2b54b3bff92E13405389AF` | Code is `0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b` (23 bytes), matching an EIP-7702 delegation designator to `0x63c0c19a282a1b52b07dd5a65b58948a07dae32b`; transaction count 17; current native balance approximately 0.0063132173 BNB | **Not a plain no-code EOA.** Prior inbound transaction history could not be verified from an explorer in this session. |
 
@@ -31,7 +31,7 @@ The user chose to keep the supplied Treasury address and disable its EIP-7702 de
 
 ## Blocking technical work
 
-- [ ] **Review the separate Mainnet implementation.** The Hardhat Mainnet network, metadata preflight, deploy guard, and source-verification script are separate from Testnet. The web app and backend remain Testnet-only; do not change only the chain ID or point the existing UI at Mainnet.
+- [ ] **Review the separate Mainnet implementation.** The Hardhat Mainnet network, metadata preflight, deploy guard, and source-verification script are separate from Testnet. The web app has a read-only view of the verified NEXUS token; purchase, subscription, and backend transaction flows remain Testnet-only. Do not point those flows at Mainnet by changing only the chain ID.
 - [ ] **Record the requested Testnet skip accurately.** The user requested a direct Mainnet path; no Testnet deployment was performed. Contract tests here are local-only and do not count as a deployed-chain rehearsal.
 - [ ] **Reconcile the Mainnet token behavior.** Independently verify the NEXUS token address, bytecode/source, owner, decimals, transfer behavior, and fee rules. `SubscriptionManager` requires exact 18-decimal transfers to the treasury and rejects fee-on-transfer payments. Confirm the treasury receives the full NEXUS payment under the deployed token's fee configuration.
 - [ ] **Select and verify the Mainnet payment token.** Confirm the intended BSC stablecoin contract address and its on-chain decimals from authoritative sources. The subscription contract requires 18 decimals; do not assume a token named “USDT” has the correct address or behavior.
