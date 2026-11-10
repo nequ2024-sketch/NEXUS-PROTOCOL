@@ -1,18 +1,3 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
-  <defs>
-    <linearGradient id="frame" x1="4" y1="5" x2="28" y2="27" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#16F3FF"/>
-      <stop offset=".52" stop-color="#A44CFF"/>
-      <stop offset="1" stop-color="#FF42D0"/>
-    </linearGradient>
-    <linearGradient id="mark" x1="10" y1="10" x2="23" y2="22" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#18F4FF"/>
-      <stop offset="1" stop-color="#FF43D1"/>
-    </linearGradient>
-  </defs>
-  <path d="M16 2.4 27.4 8.7v12L16 29.2 4.6 20.7v-12L16 2.4Z" stroke="url(#frame)" stroke-width="1.6" stroke-linejoin="round"/>
-  <path d="M16 5.5 24.5 10v9.3L16 25.8l-8.5-6.5V10L16 5.5Z" stroke="url(#frame)" stroke-opacity=".48" stroke-width=".8" stroke-linejoin="round"/>
-  <path d="M10.5 21V11l11 10V11" stroke="url(#mark)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="10.5" cy="11" r="1.4" fill="#18F4FF"/>
-  <circle cx="21.5" cy="21" r="1.4" fill="#FF43D1"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <image width="32" height="32" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wAARCAAgACADASIAAhEBAxEB/8QAGQAAAwADAAAAAAAAAAAAAAAAAgUGAAQI/8QALRAAAQQBAwIEBAcAAAAAAAAAAQIDBBEFABIhBkETIjFRFDJxgRUjM1KRofD/xAAZAQACAwEAAAAAAAAAAAAAAAABBQACAwb/xAAnEQABAwIEBQUAAAAAAAAAAAACAQMRABIEITFhBRMjMlFBcZGh0f/aAAwDAQACEQMRAD8A51wXSs3MfmJSGY9gF93yoHP9/bVTi4mMxOSRBgNePKCgHZr4tLSb5KR6e9e+syzqGU4NpwOIiqZaUaWAU1XNXR+mnURWEjyVLgumSxZIefASG7WkFZNnabKhRTQ4F0dO2WhErU1809YAAe5Aax3RMfUJ70sz8bGTMq7AyDZJ3lLE9pO1agP3p9x3HbUvn+jpeHQtxIRKjg/rsncB9R2/3OrzKQMa3IWqe+pmK8pxW5s7lAbgVKKid12SQKPJq6PKrFSUy+o8kxFeedikO0p9VFfHFpvgfz9dF5pFK09aq831Rwz3dGZR65bQs0ORxmVmwMQuHAW/HS2wyp0NbglxXypsdz2HuRocZ09nGJUWS/hpiY75BWgIHnHJsAmwraPvWmXRXWM9zHw1MIlNswXkJfUhlLyHU0EkEEjmgCAeLAN6dS+oZbmPiSJUea98IpnzOQU2hzzp9Qrbabbo1ySfbWd7M3znXPY/GcRR5UZQVBdFlZ+PP7Ul1TByL+XU43jppYkPeHFDzdF1xQJRuF/MeaTxV63MFh8rjJpk5PGOxoj7atrhSEqVaSQPcd9UH4jMakFb0J92SAmYfFxiVFL6GqS6Bu9d/lJ9KA476UZrrKfDwC0SY65DCXC2w78OUXW5IUpSiSPU2Egcj2rUE2rr5oYLF8R5gAaCgJErKzG29f/Z"/>
 </svg>
